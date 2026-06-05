@@ -31,6 +31,8 @@ import Logging
 private let logger = Logger(label: "com.apple.security.swifttls.SwiftTLSProtocol")
 #endif
 
+// Test adding a comment
+
 @_spi(SwiftTLSProtocol)
 @available(SwiftTLS 0.1.0, *)
 public enum SwiftTLSError: Error, Equatable {
