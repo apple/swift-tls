@@ -56,7 +56,7 @@ var settings: [SwiftSetting]? = [
 #if os(Linux)
 packageDependencies = [
     .package(url: "https://github.com/apple/swift-log.git", from: "1.0.0"),
-    .package(url: "https://github.com/apple/swift-crypto.git", from: "4.0.0"),
+    .package(url: "https://github.com/apple/swift-crypto.git", from: "5.0.0-beta.1"),
 ]
 targetDependencies = [
     .product(name: "Logging", package: "swift-log"),
@@ -65,7 +65,7 @@ targetDependencies = [
 ]
 #else
 packageDependencies = [
-    .package(url: "https://github.com/apple/swift-crypto.git", from: "4.0.0")
+    .package(url: "https://github.com/apple/swift-crypto.git", from: "5.0.0-beta.1")
 ]
 targetDependencies = [
     .product(name: "Crypto", package: "swift-crypto"),
