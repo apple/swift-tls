@@ -13,7 +13,7 @@ SwiftTLS supports a minimal set of features and intentionally does not allow neg
 
 - [Swift 6.3 and up](https://swift.org/install))
 - macOS 26.0 and up or Linux (Ubuntu 22.04+)
-- Xcode 16.3 and up (Apple platforms only)
+- Xcode 26.0 and up (Apple platforms only)
 
 ### Building and testing
 
