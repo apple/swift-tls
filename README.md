@@ -7,14 +7,27 @@ SwiftTLS supports a minimal set of features and intentionally does not allow neg
 > [!NOTE]
 > At this time, all types exposed in this package are marked as SPI and subject to change at any time.
 
-## Building and testing
+## Getting Started
 
-> [!NOTE]
-> Building this package requires the Swift 6.3 toolchain or later. You can download toolchains from [the Swift website](https://swift.org/install).
+### Prerequisites
 
-To build via the command line (for all platforms), run `swift build` at the root of the package.
+- [Swift 6.3 and up](https://swift.org/install))
+- macOS 26.0 and up or Linux (Ubuntu 22.04+)
+- Xcode 16.3 and up (Apple platforms only)
 
-To run all unit tests, run `swift test`. Unit tests can also be run by filtering a specific class or function:
+### Building and testing
+
+To build via the command line (for all platforms), run at the root of the package:
+```
+swift build
+``` 
+
+To run all unit tests, run 
+``` 
+swift test
+```
+
+Unit tests can also be run by filtering a specific class or function:
 
 ```
 % swift test --filter HandshakeStateMachineTests
@@ -23,10 +36,16 @@ To run all unit tests, run `swift test`. Unit tests can also be run by filtering
 
 GitHub runs the unit tests automatically when you open or update a pull request. See [CONTRIBUTING](https://github.com/apple/swift-tls/blob/main/CONTRIBUTING.md) for details.
 
-## Contributions
+## Contributing
 
-SwiftTLS has a limited scope and is focused on supporting specific projects, such as supporting QUIC in SwiftNetwork. Pull requests that add new functionality or expand the surface will not be accepted at this time. The community is welcome to propose bug fixes, tests, documentation, and ports to new platforms.
+The [SwiftTLS Contributing Guide](CONTRIBUTING.md) includes detailed information about participating in the project. 
 
-Please use [GitHub Issues](https://github.com/apple/swift-tls/issues) for tracking bugs and other work.
+We welcome the following contributions:
+* Reporting bugs with clear, reproducible steps via [GitHub Issues](https://github.com/apple/swift-tls/issues)
+* Improving documentation to make the project more accessible
+* Adding or enhancing tests to improve reliability and coverage
+* Adding ports to new platforms
+* Triaging issues by providing feedback, testing, and validation
+* Participating in the [Networking category on the Swift Forums](https://forums.swift.org/c/development/networking/129)
 
-Please see the [CONTRIBUTING](https://github.com/apple/swift-tls/blob/main/CONTRIBUTING.md) document for information on how to contribute to the project.
+SwiftTLS has a limited scope and is focused on supporting specific projects, such as supporting QUIC in SwiftNetwork. Pull requests that add new functionality or expand the surface will not be accepted at this time. 
