@@ -73,19 +73,19 @@ extension ServerHandshakeStateMachine {
         /// List of cipher suites to use for the handshake
         let supportedCipherSuites: [CipherSuite]?
 
-        /// Whether external PSKs should be treated as imported or raw
+        /// Whether to treat external PSKs as imported or raw.
         var useRawEPSKs: Bool = false
 
-        /// Whether the server is willing to accept early data
+        /// Whether the server is willing to accept early data.
         var enableEarlyData: Bool = false
 
-        /// True if used within QUIC, false otherwise
+        /// `true` when used within QUIC; `false` otherwise.
         var transportIsQUIC: Bool
 
-        /// True if client required to authenticate with RPK/Cert
+        /// `true` when the client is required to authenticate with RPK or a certificate.
         var clientAuthRequired: Bool
 
-        /// Public keys for trusted clients
+        /// Public keys for trusted clients.
         var validPeerPublicKeys: [P256.Signing.PublicKey]? {
             return _validPeerPublicKeys
         }

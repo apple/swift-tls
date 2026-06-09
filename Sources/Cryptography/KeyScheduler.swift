@@ -212,7 +212,7 @@ struct ServerSessionKeyManager<HF: HashFunction> {
 }
 
 
-/// `SessionKeyManager` is responsible for implementing the TLS 1.3 Session Key Schedule.
+/// Manages the TLS 1.3 session key schedule and exposes the derived secrets to the rest of the handshake.
 ///
 /// The TLS 1.3 key schedule builds out a ratchet of keys and secrets for various purposes.
 /// This object encapsulates the current state in the key schedule and provides access to the
@@ -300,7 +300,7 @@ fileprivate struct SessionKeyManager<HF: HashFunction> {
         }
     }
 
-    /// This exporter master secret.
+    /// This is the exporter master secret.
     var exporterMasterSecret: SymmetricKey? {
         switch self.state {
         case .idle, .earlySecret, .handshakeSecret:
@@ -521,22 +521,22 @@ fileprivate struct SessionKeyManager<HF: HashFunction> {
 
 extension SessionKeyManager {
     fileprivate enum State {
-        /// The dialog has not yet begun, we have no keying material.
+        /// The dialogue has not yet begun; no keying material is available.
         case idle
 
-        /// The client hello was sent or received. We have the early secret and the derived
-        /// early secrets.
+        /// The client hello was sent or received. The early secret and the derived early
+        /// secrets are available.
         case earlySecret(SessionKeyManager.State.EarlySecret)
 
-        /// The server hello was sent or received. We have the handshake secret and the derived
-        /// handshake secrets.
+        /// The server hello was sent or received. The handshake secret and the derived
+        /// handshake secrets are available.
         case handshakeSecret(SessionKeyManager.State.HandshakeSecret)
 
-        /// The server finished was sent or received. We have the master secret and the derived master
-        /// secrets, but not the resumption secret.
+        /// The server finished was sent or received. The master secret and the derived
+        /// master secrets are available, but not the resumption secret.
         case masterSecret(SessionKeyManager.State.MasterSecret)
 
-        /// The client finished was sent or received. We have all the secrets.
+        /// The client finished was sent or received. All the secrets are available.
         case allSecrets(SessionKeyManager.State.AllSecrets)
 
         var logDescription: String {
@@ -558,8 +558,9 @@ extension SessionKeyManager {
 
 extension SessionKeyManager.State {
     fileprivate struct EarlySecret {
-        /// This is the current state of the transcript hash. For this state, this contains the
-        /// transcipt hash through the client hello only.
+        /// The current state of the transcript hash.
+        ///
+        /// For this state, this contains the transcript hash through the client hello only.
         fileprivate var transcriptHasher: HF
 
         /// This is the tail derived secret.
@@ -620,9 +621,9 @@ extension SessionKeyManager.State {
                 let calculatedBinderValue = HMAC<HF>.authenticationCode(bytes: helloDigest, using: binderKey)
                 if !(calculatedBinderValue == binderValue.readableBytesView) {
                     if calculatedBinderValue.byteCount != binderValue.readableBytes {
-                        logger.error("psk binder value not of expected length. likely epsk hash algorithm mismatch.")
+                        logger.error("PSK binder value not of expected length. Likely epsk hash algorithm mismatch.")
                     }
-                    logger.error("client binder value incorrect. aborting handshake.")
+                    logger.error("Client binder value incorrect. Aborting handshake.")
                     throw TLSError.decryptError
                 }
             }
@@ -661,7 +662,7 @@ extension SessionKeyManager.State {
         ) -> (earlySecretState: EarlySecret, clientHelloBytes: ByteBuffer) {
             let zeros = Array(repeating: UInt8(0), count: HF.Digest.byteCount)
 
-            // Client uses a the resumption psk or first imported psk as psk input to key schedule if available. Otherwise it uses all zeros.
+            // Client uses the resumption psk or first imported psk as psk input to key schedule if available. Otherwise it uses all zeros.
             // If server does not select one of the psks the key schedule will be recomputed with all zeros.
             var preSharedKey: SymmetricKey
             var label = PSKSource.resumption.secretLabel
@@ -776,8 +777,8 @@ extension SessionKeyManager.State {
         ///     - binderSecret: The binder secret to use to calculate a HMAC
         ///     - clientHello: The client hello message to attach resumption to. This message will be mutated to contain the full
         ///         set of extensions.
-        /// - returns: The serialized bytes of the ClientHello containing the session ticket. We return this to avoid needing to serialize the
-        ///     ClientHello more than once.
+        /// - returns: The serialized bytes of the client hello containing the session ticket. We return this to avoid needing to serialize the
+        ///     client hello more than once.
         private static func tryToResume(session: SessionTicket, binderSecret: SymmetricKey, clientHello: inout ClientHello, currentTime: Date) -> ByteBuffer {
             // Step 1: compute the PSK binder. To do this we write a fake binder value that is all zeros, and then
             // serialize the client hello.
@@ -788,15 +789,15 @@ extension SessionKeyManager.State {
             return calculateFinalClientHello(binderSecret: binderSecret, clientHello: &clientHello, obfuscatedTicketAge: obfuscatedTicketAge, identity: identity)
         }
 
-        /// Attempts to use an imported psk.
+        /// Attempts to use an imported PSK.
         ///
         /// - parameters:
         ///     - epsk: The imported or raw ePSK being offered.
         ///     - binderSecret: The binder secret to use to calculate a HMAC
         ///     - clientHello: The client hello message to attach the psk to. This message will be mutated to contain the full
         ///         set of extensions.
-        /// - returns: The serialized bytes of the ClientHello containing the offered psk. We return this to avoid needing to serialize the
-        ///     ClientHello more than once.
+        /// - returns: The serialized bytes of the client hello containing the offered psk. We return this to avoid needing to serialize the
+        ///     client hello more than once.
         private static func useEPSK (epsk: GeneralEPSK, binderSecret: SymmetricKey, clientHello: inout ClientHello) -> ByteBuffer {
             // Step 1: compute the PSK binder. To do this we write a fake binder value that is all zeros, and then
             // serialize the client hello.
@@ -811,7 +812,7 @@ extension SessionKeyManager.State {
 
     fileprivate struct HandshakeSecret {
         /// This is the current state of the transcript hash. For this state, this contains the
-        /// transcipt hash through the server hello at construction, and then potentially up to
+        /// transcript hash through the server hello at construction, and then potentially up to
         /// but not including the server Finished.
         fileprivate var transcriptHasher: HF
 
@@ -887,7 +888,7 @@ extension SessionKeyManager.State {
 
     fileprivate struct MasterSecret {
         /// This is the current state of the transcript hash. For this state, this contains the
-        /// transcipt hash through the server Finished.
+        /// transcript hash through the server Finished.
         fileprivate var transcriptHasher: HF
 
         /// This is the master secret.
@@ -905,7 +906,7 @@ extension SessionKeyManager.State {
         /// This is the server application traffic secret.
         fileprivate var serverApplicationTrafficSecret: SymmetricKey
 
-        /// This exporter master secret.
+        /// This is the exporter master secret.
         fileprivate var exporterMasterSecret: SymmetricKey
 
         init(handshakeSecret: HandshakeSecret, serverFinishedBytes: ByteBuffer) {
@@ -964,7 +965,7 @@ extension SessionKeyManager.State {
         /// This is the server application traffic secret. We save this from the previous state.
         fileprivate var serverApplicationTrafficSecret: SymmetricKey
 
-        /// This exporter master secret. We save this from the previous state.
+        /// This is the exporter master secret. We save this from the previous state.
         fileprivate var exporterMasterSecret: SymmetricKey
 
         /// The resumption master secret.

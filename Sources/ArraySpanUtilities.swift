@@ -13,8 +13,9 @@
 //===----------------------------------------------------------------------===//
 
 extension Array where Element == UInt8 {
-    /// Copy of the bytes of the given raw span into this array. The span
-    /// must have exactly count bytes in it.
+    /// Creates an array by copying the bytes of the given raw span.
+    ///
+    /// The span must contain exactly `count` bytes.
     init(copying bytes: RawSpan) {
         self.init(unsafeUninitializedCapacity: bytes.byteCount) { outputBuffer, initializedCount in
             bytes.withUnsafeBytes { inputBuffer in
@@ -26,8 +27,9 @@ extension Array where Element == UInt8 {
 }
 
 extension InlineArray where Element == UInt8 {
-    /// Copy of the bytes of the given raw span into this array. The span
-    /// must have exactly count bytes in it.
+    /// Creates an inline array by copying the bytes of the given raw span.
+    ///
+    /// The span must contain exactly `count` bytes.
     init(copying bytes: RawSpan) {
         precondition(count == bytes.byteCount)
         self.init { outputSpan in
@@ -59,7 +61,7 @@ extension InlineArray where Element: Equatable {
 }
 
 extension OutputRawSpan {
-    /// Append the contents of the given raw span to this output span.
+    /// Appends the contents of the given raw span to this output span.
     mutating func append(contentsOf bytes: RawSpan) {
         for i in 0..<bytes.byteCount {
             append(bytes.unsafeLoad(fromByteOffset: i, as: UInt8.self))

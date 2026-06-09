@@ -37,7 +37,7 @@ private let logger = Logger(label: "com.apple.security.swifttls.SessionTicket")
 /// This structure encodes all the information needed to resume a session. This means it includes ticket data,
 /// ticket age information, and details about the underlying handshake so that resumption can be validated.
 ///
-/// Critically, session tickets are capable of being serialized and deserialized.
+/// Critically, you can serialize and deserialize session tickets.
 struct SessionTicket {
     var issued: Date
 
@@ -166,9 +166,9 @@ struct SessionTicket {
         self.certificateBundle = certificateBundle
     }
 
-    /// Whether this SessionTicket can be used to resume with this client hello.
+    /// Reports whether this `SessionTicket` can resume with the provided client hello.
     ///
-    /// Note: This always returns `false` when using certificate callbacks for peer verification as it requires peer public keys to be set on the configuration.
+    /// Note: This always returns `false` when using certificate callbacks for peer verification, because resumption requires peer public keys to be set on the configuration.
     func isCompatibleWith(_ clientHello: ClientHello, configuration: HandshakeStateMachine.Configuration, currentTime: Date) -> Bool {
         // Gotta confirm this session is suitable. Start with the cheap ones: do the algorithms line up?
         // For now we only resume if this matches the _first_ outcomes, because it avoids needing to deal with
@@ -217,7 +217,7 @@ struct SessionTicket {
 }
 
 extension SessionTicket {
-    /// RFC 8446 says we must not cache longer than this.
+    /// The maximum cache lifetime allowed by RFC 8446.
     static fileprivate let maxLifetime = UInt32(604800)
 }
 

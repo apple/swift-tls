@@ -24,10 +24,10 @@ extension Data {
 }
 #endif
 
-/// A type that brings over many of the conveniences of NIO's ByteBuffer, reimplemented on Data.
+/// A type that brings over many of the conveniences of SwiftNIO's `ByteBuffer`, reimplemented on `Data`.
 ///
-/// This is not a truly hardened version of NIO's ByteBuffer, and lacks some flexibility, but it's good enough
-/// for what we need.
+/// This is not a truly hardened version of NIO's ByteBuffer. It lacks some flexibility, but it's
+/// good enough for what we need.
 struct ByteBuffer {
     private var backingData: Data
     private(set) var readerIndex: Data.Index
@@ -63,7 +63,7 @@ struct ByteBuffer {
         return self.writerIndex - self.readerIndex
     }
 
-    /// Access the readable bytes as a RawSpan
+    /// The readable bytes exposed as a `RawSpan`.
     var readableBytesSpan: RawSpan {
         let startOffset = self.readerIndex - self.backingData.startIndex
         let endOffset = startOffset + self.readableBytes
@@ -293,8 +293,8 @@ extension ByteBuffer: Hashable {
 
 extension ByteBuffer {
     /// Execute the given `body` function with an input buffer that can access
-    /// the readable part of the byte buffer. Anything consumed from the input
-    /// buffer will be consumed from this byte buffer as well.
+    /// the readable part of the byte buffer. Bytes consumed from the input
+    /// buffer are also consumed from this byte buffer.
     ///
     /// Use this when you have a byte buffer and want to read from it.
     mutating func withInputBuffer<R: ~Copyable, E: Error>(

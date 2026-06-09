@@ -150,11 +150,11 @@ struct HandshakeStateMachine {
             if certificateTypes.count > 1
                 || (certificateTypes.count == 1 && certificateTypes.first != .x509) {
                 logger.debug("client sending server_certificate_types extension")
-                helloExtensions.append(.serverCertificateType(.offer(certificateTypes)),)
+                helloExtensions.append(.serverCertificateType(.offer(certificateTypes)))
             }
         case .rawPublicKey:
             logger.debug("client sending server_certificate_types extension")
-            helloExtensions.append(.serverCertificateType(PeerCertificateBundle.verificationCertificateTypes),)
+            helloExtensions.append(.serverCertificateType(PeerCertificateBundle.verificationCertificateTypes))
         case .none:
             break
         }
@@ -253,9 +253,9 @@ struct HandshakeStateMachine {
         self.parser.appendBytes(&data)
     }
 
-    /// Call with an input buffer that we've been parsing from to save any
-    /// bytes remaining from the input buffer. These generally correspond to a
-    /// partial message.
+    /// Call with an input buffer that has been parsed from to save any
+    /// bytes remaining from the input buffer. The saved bytes
+    /// typically represent a partial message.
     mutating func saveUnprocessedIncomingBytes(_ data: inout InputBuffer) {
         let byteCount = data.byteCount
         logger.debug("saving unprocessed network data (\(byteCount) bytes)")
@@ -315,7 +315,7 @@ struct HandshakeStateMachine {
                         continue
                     }
                 case .serverCertificate:
-                    // This will transition to an intermediate state when perform asynchronous verification without and immediate result.
+                    // This will transition to an intermediate state when performing asynchronous verification without an immediate result.
                     switch try self.handleReadServerCertificateVerify(incomingBytes: &incomingBytes) {
                     case .waitingForMoreData:
                         return nil
@@ -358,7 +358,7 @@ struct HandshakeStateMachine {
 
     /// Obtain the value of the QUIC transport parameters set by the peer, if any.
     ///
-    /// Returns `nil` if the peer didn't set any, or if the handshake has not progressed to the point
+    /// Returns `nil` if the peer did not set any, or if the handshake has not progressed to the point
     /// of having a value yet.
     var peerQUICTransportParameters: ByteBuffer? {
         switch self.state {
@@ -494,7 +494,7 @@ struct HandshakeStateMachine {
         }
     }
 
-    /// Obtain whether we offered an EPSK.
+    /// Reports whether the client offered an EPSK.
     ///
     /// Returns `false` if the handshake has not progressed to the point of having a value yet.
     var epskOffered: Bool {
@@ -549,8 +549,8 @@ struct HandshakeStateMachine {
 
     /// Signals whether the peer has accepted early data.
     ///
-    /// Will be `nil` if the handshake has not proceeded to the point of receiving the EncryptedExtensions message,
-    /// `false` if the ServerHello did not contain an `early_data` extension, or `true` if it did.
+    /// This property is `nil` if the handshake has not proceeded to the point of receiving the EncryptedExtensions message,
+    /// `false` if the server hello did not contain an `early_data` extension, or `true` if it did.
     var earlyDataAccepted: Bool? {
         switch self.state {
         case .idle, .clientHello, .serverHello:
@@ -570,7 +570,7 @@ struct HandshakeStateMachine {
         }
     }
 
-    /// Determine if the state machine is await an asynchronous local computation.
+    /// Determine if the state machine is awaiting an asynchronous local computation.
     public var awaitingAsyncComputation: Bool {
         switch self.state {
         case .idle, .clientHello, .serverHello, .serverEncryptedExtensions, .serverCertificateRequest, .serverCertificate, .serverCertificateVerify, .readyForData:
@@ -580,7 +580,7 @@ struct HandshakeStateMachine {
         }
     }
 
-    /// Determine if the handshake is fully complete (sent Finished and validated peer's)
+    /// Determine if the handshake is fully complete: the local side sent its finished message and validated the peer's finished message.
     var handshakeComplete: Bool {
         switch self.state {
         case .readyForData:
@@ -766,9 +766,9 @@ extension HandshakeStateMachine {
         case .finished(let finished):
             serverFinished = finished
         }
-        logger.info("client got server finished ")
+        logger.info("client got server finished")
 
-        let result = try self.state.receievedServerFinished(serverFinished: serverFinished, serverFinishedBytes: message.messageBytes, serializer: &self.serializer)
+        let result = try self.state.receivedServerFinished(serverFinished: serverFinished, serverFinishedBytes: message.messageBytes, serializer: &self.serializer)
         return .complete(result)
     }
 

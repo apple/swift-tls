@@ -17,14 +17,14 @@
 
 private let logger = Logger(label: "com.apple.security.swifttls.EmbeddedPrint")
 
-/// This file provides functionality for logging interpolated strings without
-/// requiring construction of String types (which are not available in Embedded
-/// Swift).
+// This file provides functionality for logging interpolated strings without
+// requiring construction of String types (which are not available in Embedded
+// Swift).
 
-/// Types that implement `Loggable` are able to be logged using the
+/// A type that conforms to `Loggable` can be logged using the
 /// `StreamingInterpolation` mechanisms.
 ///
-/// The `write` function should write a human-readable instance of the object to
+/// The `write` function writes a human-readable representation of the object to
 /// the passed-in `Printer` type:
 ///
 ///     struct MyType: Loggable {
@@ -42,9 +42,9 @@ protocol Loggable {
 /// A type that supports printing individual characters.
 ///
 /// Characters can either be streamed directly out to a log (e.g. stdout), or
-/// buffered any manually written out by the user.
+/// buffered and manually written out by the user.
 protocol CharacterPrinter {
-    /// Initialize a new instance.
+    /// Creates a new printer with no instance state.
     ///
     /// Unfortunately, Swift calls this from within the compiler's generated
     /// code, with a fresh object created each time string interpolation is
@@ -62,9 +62,9 @@ protocol CharacterPrinter {
     ///
     /// Implementations of `CharacterPrinter` that don't buffer anything (for
     /// example, if they just forward characters directly to `stdout`) need not
-    /// do anything here. However, implementations of `CharacterPrinter` that
-    /// are attempting to buffer the text will need to append the contents of
-    /// the child `CharacterPrinter` into the parent `CharacterPrinter`.
+    /// do anything here. However, implementations that buffer text must append
+    /// the contents of the child `CharacterPrinter` to the parent
+    /// `CharacterPrinter`.
     func write(contentsOf: Self)
 }
 
@@ -87,18 +87,18 @@ extension CharacterPrinter {
 
     /// Write the given buffer to the printer.
     ///
-    /// This function will print the entire buffer, including NUL bytes and
-    /// anything following them. To print NUL-terminated strings, see the
-    /// overload `write(nulTerminated)`.
+    /// This function will print the entire buffer, including NULL bytes and
+    /// anything following them. To print NULL-terminated strings, see the
+    /// overload `write(nullTerminated)`.
     func write(contentsOf buffer: UnsafeBufferPointer<UInt8>) {
         self.write(contentsOf: UnsafeRawBufferPointer(buffer))
     }
 
     /// Write the given buffer to the printer.
     ///
-    /// This function will print the entire buffer, including NUL bytes and
-    /// anything following them. To print NUL-terminated strings, see the
-    /// overload `write(nulTerminated)`.
+    /// This function will print the entire buffer, including NULL bytes and
+    /// anything following them. To print NULL-terminated strings, see the
+    /// overload `write(nullTerminated)`.
     @inline(never)  // avoid aggressive inlining of non-perf-sensitive code
     func write(contentsOf buffer: UnsafeRawBufferPointer) {
         for c in buffer {
@@ -106,7 +106,7 @@ extension CharacterPrinter {
         }
     }
 
-    /// Write a NULL-terminated (C style) string to the printer.
+    /// Writes a NULL-terminated, C-style string to the printer.
     @inline(never)  // avoid aggressive inlining of non-perf-sensitive code
     func write(nullTerminated value: UnsafeBufferPointer<CChar>) {
         for c in value {
