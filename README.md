@@ -1,6 +1,6 @@
 # Swift TLS
 
-SwiftTLS provides a Swift-native minimal implementation of the TLS 1.3 handshake, specifically aimed at providing support for the QUIC transport protocol. This package is specifically intended to support the implementation of QUIC in [SwiftNetwork](https://github.com/apple/swift-network-evolution).
+SwiftTLS provides a minimal, Swift-native implementation of the TLS 1.3 handshake to support the QUIC transport protocol. This package is intended to support the implementation of QUIC in [SwiftNetwork](https://github.com/apple/swift-network-evolution).
 
 SwiftTLS supports a minimal set of features and intentionally does not allow negotiation of older versions of TLS.
 

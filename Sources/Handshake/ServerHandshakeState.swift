@@ -865,7 +865,7 @@ extension ServerHandshakeState {
             if clientHelloVerifier.clientIndicatedEarlyData && idleState.configuration.enableEarlyData {
                 logger.debug("Client requested early data and server configured to allow early data. Checking conditions...")
                 if  let negotiatedPSKResult, negotiatedPSKResult.pskIndex == 0 {
-                    logger.debug("Early data compatibly psk negotiated. Continuing checks...")
+                    logger.debug("A PSK compatible with early data was negotiated. Continuing checks...")
                     if clientHelloVerifier.clientALPN != nil {
                         // client attempted to negotiate ALPN so early data corresponds to app protocol at index 0
                         if alpnSelectionResult?.1 == 0 {

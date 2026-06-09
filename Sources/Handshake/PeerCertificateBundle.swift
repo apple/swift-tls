@@ -35,8 +35,8 @@ private let logger = Logger(label: "com.apple.security.swifttls.PeerCertificateB
 
 /// `PeerCertificateBundle` represents the bundle of certificates sent by the peer.
 ///
-/// Depending on extensions, the `PeerCertificateBundle` may not contain X.509 certificates
-/// per se. For our current use-case, we only support one kind of certificate.
+/// Depending on negotiated extensions, the bundle holds either X.509 certificates or raw
+/// public keys; a single bundle uses exactly one of these representations.
 struct PeerCertificateBundle {
     fileprivate var bundle: Bundle
 
@@ -212,7 +212,7 @@ extension PeerCertificateBundle {
 extension PeerCertificateBundle {
     /// Whether we support unverified X.509.
     ///
-    /// This can only be true if a) the appropriate compile flag is passed
+    /// This is `true` only when the `SWIFTTLS_SUPPORT_UNVERIFIED_X509` compile flag is passed.
     #if SWIFTTLS_SUPPORT_UNVERIFIED_X509
         fileprivate static let supportsUnverifiedX509 = true
     #else

@@ -66,12 +66,13 @@ enum HandshakeState {
     /// The client has received the server's certificate verification
     case serverCertificateVerify(ServerCertificateVerifyState)
 
-    /// The client has received `ServerFinished`, verified the server, sent
-    /// its second flight including:
-    /// - `ClientCertificate` (if a certificate request was received. Will be empty if no real cert/rpk was available)
-    /// - `ClientCertificateVerify` (if a certificate/rpk was available)
-    /// - `ClientFinished`
-    /// and the handshake is now complete in the client's view.
+    /// The client has received `ServerFinished`, verified the server, and sent
+    /// the client's second flight, which includes:
+    /// - `ClientCertificate` (if a certificate request was received; empty if no real cert/rpk was available).
+    /// - `ClientCertificateVerify` (if a certificate or rpk was available).
+    /// - `ClientFinished`.
+    ///
+    /// The handshake is now complete in the client's view.
     case readyForData(ReadyState)
 
     mutating func sendingClientHello(
@@ -244,9 +245,9 @@ enum HandshakeState {
         }
     }
 
-    /// Returns bytes for `ClientFinished`
-    /// Or bytes for `Client Certificate | [Client Certificate Verify] | Client Finished`
-    ///  if client auth with cert/rpk is requested
+    /// Returns bytes for `ClientFinished`, or bytes for
+    /// `Client Certificate | [Client Certificate Verify] | Client Finished`
+    /// if client authentication with a certificate or RPK is requested.
     mutating func receivedServerFinished(serverFinished: FinishedMessage, serverFinishedBytes: ByteBuffer, serializer: inout TLSMessageSerializer) throws(TLSError) -> PartialHandshakeResult {
         switch self {
         case .serverCertificateVerify(var state) where state.sendClientCertificateMessage:
@@ -1234,8 +1235,9 @@ extension HandshakeState {
             return (state, clientFinishedBuffer)
         }
 
-        /// Creates a `ReadyState` and returns `ClientFinished` bytes
-        /// called when client auth with cert/rpk happening
+        /// Creates a `ReadyState` and returns `ClientFinished` bytes.
+        ///
+        /// Called when client authentication with a certificate or RPK is in progress.
         static func receivingServerFinished(originalState state: ClientCertificateVerifyState,
                                             serverFinished: FinishedMessage,
                                             serverFinishedBytes: ByteBuffer,

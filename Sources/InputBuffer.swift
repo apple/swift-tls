@@ -130,12 +130,12 @@ extension InputBuffer {
         }
     }
 
-    /// Yup, double optional! Is this really necessary?
+    /// Reads a value through `readFunction` while distinguishing three outcomes.
     ///
-    /// Yes. The underlying data is necessarily optional: it may be there or it may not. But _also_ we may not
-    /// have enough data in the buffer to read either the optional discriminator or the main data. In this case, we
-    /// need another layer of optionality. The "outer" optional is whether there was enough data in the buffer:
-    /// the "inner" optional is the underlying data type.
+    /// The underlying data is necessarily optional: it may be there or it may not. But the buffer
+    /// may also not contain enough data to read either the optional discriminator or the main
+    /// data. The outer optional indicates whether the buffer held enough data; the inner optional
+    /// is the underlying data type.
     mutating func readOptional<DataType: ~Copyable, E: Error>(_ readFunction: (inout InputBuffer) throws(E) -> DataType?) throws(E) -> DataType?? {
         guard let discriminator = self.readInteger(as: UInt8.self) else {
             return nil

@@ -37,7 +37,7 @@ private let logger = Logger(label: "com.apple.security.swifttls.SessionTicket")
 /// This structure encodes all the information needed to resume a session. This means it includes ticket data,
 /// ticket age information, and details about the underlying handshake so that resumption can be validated.
 ///
-/// Critically, session tickets are capable of being serialized and deserialized.
+/// Critically, you can serialize and deserialize session tickets.
 struct SessionTicket {
     var issued: Date
 

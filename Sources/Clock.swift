@@ -49,8 +49,8 @@ internal typealias Date = EmbeddedDateStub
 
 /// This protocol exists for testing purposes only, and is declared internal for that reason.
 ///
-/// This method defines a way to get hold of time. In release builds, we always use Foundation for this, but
-/// when testing we want a way to stub out the results.
+/// This protocol defines a way to obtain the current time. In release builds, we always use
+/// Foundation for this, but when testing we want a way to stub out the results.
 internal protocol SwiftTLSClock {
     func now() -> Date
 }

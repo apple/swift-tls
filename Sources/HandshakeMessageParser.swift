@@ -60,8 +60,8 @@ struct HandshakeMessageParser {
     }
 
     /// Parse a handshake message using the bytes we've buffered already plus the
-    /// provided `incomingBytes`. On exit, any bytes not consumed by the parsing
-    /// will be buffered for the next call.
+    /// provided `incomingBytes`. On exit, any bytes the parser doesn't consume
+    /// remain buffered for the next call.
     mutating func parseHandshakeMessage(incomingBytes: inout InputBuffer) throws(TLSError) -> ParseResult? {
         // If we didn't buffer any bytes, we can parse directly from the input buffer
         // without copying anything.

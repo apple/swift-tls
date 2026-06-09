@@ -21,10 +21,10 @@ private let logger = Logger(label: "com.apple.security.swifttls.EmbeddedPrint")
 /// requiring construction of String types (which are not available in Embedded
 /// Swift).
 
-/// Types that implement `Loggable` are able to be logged using the
+/// A type that conforms to `Loggable` can be logged using the
 /// `StreamingInterpolation` mechanisms.
 ///
-/// The `write` function should write a human-readable instance of the object to
+/// The `write` function writes a human-readable representation of the object to
 /// the passed-in `Printer` type:
 ///
 ///     struct MyType: Loggable {
@@ -62,9 +62,9 @@ protocol CharacterPrinter {
     ///
     /// Implementations of `CharacterPrinter` that don't buffer anything (for
     /// example, if they just forward characters directly to `stdout`) need not
-    /// do anything here. However, implementations of `CharacterPrinter` that
-    /// are attempting to buffer the text will need to append the contents of
-    /// the child `CharacterPrinter` into the parent `CharacterPrinter`.
+    /// do anything here. However, implementations that buffer text must append
+    /// the contents of the child `CharacterPrinter` to the parent
+    /// `CharacterPrinter`.
     func write(contentsOf: Self)
 }
 
