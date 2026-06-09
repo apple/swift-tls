@@ -87,7 +87,7 @@ extension CharacterPrinter {
 
     /// Write the given buffer to the printer.
     ///
-    /// This function will print the entire buffer, including NUL bytes and
+    /// This function will print the entire buffer, including NULL bytes and
     /// anything following them. To print NULL-terminated strings, see the
     /// overload `write(nullTerminated)`.
     func write(contentsOf buffer: UnsafeBufferPointer<UInt8>) {
@@ -96,7 +96,7 @@ extension CharacterPrinter {
 
     /// Write the given buffer to the printer.
     ///
-    /// This function will print the entire buffer, including NUL bytes and
+    /// This function will print the entire buffer, including NULL bytes and
     /// anything following them. To print NULL-terminated strings, see the
     /// overload `write(nullTerminated)`.
     @inline(never)  // avoid aggressive inlining of non-perf-sensitive code

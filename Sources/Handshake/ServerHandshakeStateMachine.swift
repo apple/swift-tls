@@ -351,7 +351,7 @@ struct ServerHandshakeStateMachine {
 
     /// Signals whether the server has accepted early data.
     ///
-    /// `false` if the `ServerHello` did not contain an `early_data` extension, or `true` if it did.
+    /// `false` if the server hello did not contain an `early_data` extension, or `true` if it did.
     var earlyDataAccepted: Bool? {
 
         switch self.state {

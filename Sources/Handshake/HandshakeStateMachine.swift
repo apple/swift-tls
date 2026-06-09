@@ -253,9 +253,9 @@ struct HandshakeStateMachine {
         self.parser.appendBytes(&data)
     }
 
-    /// Call with an input buffer that you've been parsing from to save any
-    /// bytes remaining from the input buffer. The saved bytes typically
-    /// represent a partial message.
+    /// Call with an input buffer that has been parsed from to save any
+    /// bytes remaining from the input buffer. The saved bytes
+    /// typically represent a partial message.
     mutating func saveUnprocessedIncomingBytes(_ data: inout InputBuffer) {
         let byteCount = data.byteCount
         logger.debug("saving unprocessed network data (\(byteCount) bytes)")
@@ -550,7 +550,7 @@ struct HandshakeStateMachine {
     /// Signals whether the peer has accepted early data.
     ///
     /// This property is `nil` if the handshake has not proceeded to the point of receiving the EncryptedExtensions message,
-    /// `false` if the `ServerHello` did not contain an `early_data` extension, or `true` if it did.
+    /// `false` if the server hello did not contain an `early_data` extension, or `true` if it did.
     var earlyDataAccepted: Bool? {
         switch self.state {
         case .idle, .clientHello, .serverHello:
@@ -580,7 +580,7 @@ struct HandshakeStateMachine {
         }
     }
 
-    /// Determine if the handshake is fully complete: the local side sent `Finished` and validated the peer's `Finished`.
+    /// Determine if the handshake is fully complete: the local side sent its finished message and validated the peer's finished message.
     var handshakeComplete: Bool {
         switch self.state {
         case .readyForData:

@@ -166,7 +166,7 @@ struct SessionTicket {
         self.certificateBundle = certificateBundle
     }
 
-    /// Reports whether this `SessionTicket` can resume with the provided `ClientHello`.
+    /// Reports whether this `SessionTicket` can resume with the provided client hello.
     ///
     /// Note: This always returns `false` when using certificate callbacks for peer verification, because resumption requires peer public keys to be set on the configuration.
     func isCompatibleWith(_ clientHello: ClientHello, configuration: HandshakeStateMachine.Configuration, currentTime: Date) -> Bool {

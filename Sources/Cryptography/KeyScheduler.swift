@@ -521,22 +521,22 @@ fileprivate struct SessionKeyManager<HF: HashFunction> {
 
 extension SessionKeyManager {
     fileprivate enum State {
-        /// The dialog has not yet begun; no keying material is available.
+        /// The dialogue has not yet begun; no keying material is available.
         case idle
 
-        /// The `ClientHello` was sent or received. The early secret and the derived early
+        /// The client hello was sent or received. The early secret and the derived early
         /// secrets are available.
         case earlySecret(SessionKeyManager.State.EarlySecret)
 
-        /// The `ServerHello` was sent or received. The handshake secret and the derived
+        /// The server hello was sent or received. The handshake secret and the derived
         /// handshake secrets are available.
         case handshakeSecret(SessionKeyManager.State.HandshakeSecret)
 
-        /// The server `Finished` was sent or received. The master secret and the derived
+        /// The server finished was sent or received. The master secret and the derived
         /// master secrets are available, but not the resumption secret.
         case masterSecret(SessionKeyManager.State.MasterSecret)
 
-        /// The client `Finished` was sent or received. All the secrets are available.
+        /// The client finished was sent or received. All the secrets are available.
         case allSecrets(SessionKeyManager.State.AllSecrets)
 
         var logDescription: String {
@@ -558,7 +558,9 @@ extension SessionKeyManager {
 
 extension SessionKeyManager.State {
     fileprivate struct EarlySecret {
-        /// The transcript hasher, advanced through the `ClientHello`.
+        /// The current state of the transcript hash.
+        ///
+        /// For this state, this contains the transcript hash through the client hello only.
         fileprivate var transcriptHasher: HF
 
         /// This is the tail derived secret.
@@ -619,9 +621,9 @@ extension SessionKeyManager.State {
                 let calculatedBinderValue = HMAC<HF>.authenticationCode(bytes: helloDigest, using: binderKey)
                 if !(calculatedBinderValue == binderValue.readableBytesView) {
                     if calculatedBinderValue.byteCount != binderValue.readableBytes {
-                        logger.error("psk binder value not of expected length. Likely epsk hash algorithm mismatch.")
+                        logger.error("PSK binder value not of expected length. Likely epsk hash algorithm mismatch.")
                     }
-                    logger.error("client binder value incorrect. Aborting handshake.")
+                    logger.error("Client binder value incorrect. Aborting handshake.")
                     throw TLSError.decryptError
                 }
             }
@@ -775,8 +777,8 @@ extension SessionKeyManager.State {
         ///     - binderSecret: The binder secret to use to calculate a HMAC
         ///     - clientHello: The client hello message to attach resumption to. This message will be mutated to contain the full
         ///         set of extensions.
-        /// - returns: The serialized bytes of the `ClientHello` containing the session ticket. We return this to avoid needing to serialize the
-        ///     `ClientHello` more than once.
+        /// - returns: The serialized bytes of the client hello containing the session ticket. We return this to avoid needing to serialize the
+        ///     client hello more than once.
         private static func tryToResume(session: SessionTicket, binderSecret: SymmetricKey, clientHello: inout ClientHello, currentTime: Date) -> ByteBuffer {
             // Step 1: compute the PSK binder. To do this we write a fake binder value that is all zeros, and then
             // serialize the client hello.
@@ -794,8 +796,8 @@ extension SessionKeyManager.State {
         ///     - binderSecret: The binder secret to use to calculate a HMAC
         ///     - clientHello: The client hello message to attach the psk to. This message will be mutated to contain the full
         ///         set of extensions.
-        /// - returns: The serialized bytes of the `ClientHello` containing the offered psk. We return this to avoid needing to serialize the
-        ///     `ClientHello` more than once.
+        /// - returns: The serialized bytes of the client hello containing the offered psk. We return this to avoid needing to serialize the
+        ///     client hello more than once.
         private static func useEPSK (epsk: GeneralEPSK, binderSecret: SymmetricKey, clientHello: inout ClientHello) -> ByteBuffer {
             // Step 1: compute the PSK binder. To do this we write a fake binder value that is all zeros, and then
             // serialize the client hello.

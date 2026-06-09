@@ -37,10 +37,10 @@ enum HandshakeState {
     /// Ready, but the handshake has not yet started
     case idle(IdleState)
 
-    /// `ClientHello` has been sent to the server
+    /// The client hello has been sent to the server
     case clientHello(ClientHelloState)
 
-    /// The client has received `ServerHello`
+    /// The client has received the server hello
     case serverHello(ServerHelloState)
 
     /// The client has received the server's encrypted extensions
@@ -526,7 +526,7 @@ extension HandshakeState {
             let expectedGroup = clientHelloState.configuration.fixedKeyExchangeGroup
             guard let keyShare = serverKeyShare,
                 (keyShare.group == expectedGroup) else {
-                logger.error("unsupported server key share, expected secp384 or x25519 or x25519MLKEM768 got \(serverKeyShare?.description ?? "nil")")
+                logger.error("unsupported server key share, expected secp384 or x25519 or x25519-MLKEM768 got \(serverKeyShare?.description ?? "nil")")
                 throw TLSError.negotiationFailed
             }
 

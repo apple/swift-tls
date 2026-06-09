@@ -38,10 +38,10 @@ enum ServerHandshakeState {
     /// Ready, but the handshake has not yet started
     case idle(IdleState)
 
-    /// The server has received `ClientHello` and negotiated parameters
+    /// The server has received the client hello and negotiated parameters
     case clientHello(ClientHelloState)
 
-    /// The `ServerHello` has been sent to the client.
+    /// The server hello has been sent to the client.
     case serverHello(ServerHelloState)
 
     /// The `ServerEncryptedExtensions` has been sent to the client.

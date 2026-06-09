@@ -221,7 +221,7 @@ extension PeerCertificateBundle {
 
     /// The certificate types this peer is willing to verify.
     ///
-    /// The client offers these in the `ClientHello` under `server_certificate_types` when it is
+    /// The client offers these in the client hello under `server_certificate_types` when it is
     /// configured to expect a server raw public key. The server uses this same list to determine
     /// whether it supports any of the offered certificate types in `client_certificate_types`.
     static let verificationCertificateTypes: Extension.CertificateTypeExt = {
@@ -237,7 +237,7 @@ extension PeerCertificateBundle {
 
     /// The certificate types this peer can provide to its peer.
     ///
-    /// The client offers this in the `ClientHello` under `client_certificate_types` when it is
+    /// The client offers this in the client hello under `client_certificate_types` when it is
     /// configured with a raw public key. The server uses this list to determine whether it
     /// supports any of the offered certificate types in `client_certificate_types`.
     static let availableCertificateTypes: Extension.CertificateTypeExt = {
