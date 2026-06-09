@@ -758,7 +758,7 @@ extension ServerHandshakeState {
             //
             // - legacy_version MUST be set to 0x0303 (TLSv1.2)
             // - supported_versions extension is present
-            // - supported_versions extension includes 0x03034 (TLSv1.3)
+            // - supported_versions extension includes 0x0304 (TLSv1.3)
             // - cipherSuites contains supported values
             // - legacy_compression_methods must contain one byte set to zero
             // - key_shares extension present (required for ECDHE or DHE key exchange)
