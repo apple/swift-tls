@@ -38,7 +38,7 @@ enum ServerHandshakeState {
     /// Ready, but the handshake has not yet started
     case idle(IdleState)
 
-    /// The server has recieved `ClientHello` and negotiated parameters
+    /// The server has received `ClientHello` and negotiated parameters
     case clientHello(ClientHelloState)
 
     /// The `ServerHello` has been sent to the client.
@@ -56,7 +56,7 @@ enum ServerHandshakeState {
     /// The `ServerCertificate` has been sent to the client.
     case serverCertificate(ServerCertificateState)
 
-    /// The server is awaiting the the signature to include in the `ServerCertificateVerify` message.
+    /// The server is awaiting the signature to include in the `ServerCertificateVerify` message.
     case awaitingSignature(AwaitingSignatureState)
 
     /// The `ServerCertificateVerify` has been sent to the client.
@@ -71,7 +71,7 @@ enum ServerHandshakeState {
     /// The `CertificateVerify` message has been read from the client.
     case clientCertificateVerify(ClientCertificateVerifyState)
 
-    /// The server has recieved `ClientFinished`, and the handshake is now complete
+    /// The server has received `ClientFinished`, and the handshake is now complete
     case readyForData(ReadyState)
 
     mutating func receivedClientHello(_ clientHello: ClientHello, bytes: ByteBuffer) throws(TLSError) -> PartialHandshakeResult? {
@@ -301,9 +301,9 @@ extension ServerHandshakeState {
         var clientOfferedPSKs: Extension.PreSharedKey.OfferedPSKs? = nil
         var clientIndicatedEarlyData: Bool = false
         let serverSupportedGroups: [NamedGroup]
-        let serverSupportedSignatureAlgs: [SignatureScheme] /* must include at least one elemnt */
+        let serverSupportedSignatureAlgs: [SignatureScheme] /* must include at least one element */
         let serverSupportedCertificateTypes: [CertificateType] /* must include at least one element */
-        let serverSupportedClientCertificateTypes: [CertificateType] /* must include at least on element */
+        let serverSupportedClientCertificateTypes: [CertificateType] /* must include at least one element */
         let serverSupportedPSKKexModes: [Extension.PreSharedKeyKexModes.Mode]
         let serverSupportedPSKs: [GeneralEPSK]
         let useRawEPSKs: Bool
@@ -379,7 +379,7 @@ extension ServerHandshakeState {
                 }
                 guard clientRequestPSKKexModes.modes.contains(.pskAndDHE) else {
                     // ignore pre shared keys if client did not offer psk_dhe
-                    logger.debug("server ignoring offererd pre shared keys because it did not offer psk_dhe mode")
+                    logger.debug("server ignoring offered pre shared keys because it did not offer psk_dhe mode")
                     return nil
                 }
 
@@ -416,7 +416,7 @@ extension ServerHandshakeState {
                                                                 bindersArrayLength: bindersArrayLength)
                                 }
                             }
-                            // if it didn't match a pre-imported psk, store it to later pass to to the external psk selection callback (if set)
+                            // if it didn't match a pre-imported psk, store it to later pass to the external psk selection callback (if set)
                             offeredEPSKs.append(SwiftOfferedEPSK(external_identity: importedIdentity.externalIdentity, context: importedIdentity.context))
                             offeredEPSKIndices.append(UInt16(i))
                         }
@@ -430,7 +430,7 @@ extension ServerHandshakeState {
                                                             bindersArrayLength: bindersArrayLength)
                             }
                         }
-                        // if it didn't match a pre-imported psk, store it to later pass to to the external psk selection callback (if set)
+                        // if it didn't match a pre-imported psk, store it to later pass to the external psk selection callback (if set)
                         offeredEPSKs.append(SwiftOfferedEPSK(external_identity: pskIdentity.identity, context: nil))
                         offeredEPSKIndices.append(UInt16(i))
                     }
@@ -1174,7 +1174,7 @@ extension ServerHandshakeState {
             self.authenticationDetails = authenticationDetails
         }
 
-        // Build the CertificateMessag
+        // Build the CertificateMessage
         static func buildCertificateMessage(configuration: ServerHandshakeStateMachine.Configuration, keyScheduler: inout ServerSessionKeyManager<SHA384>, certificateList: [CertificateMessage.CertificateEntry]) throws(TLSError) -> ByteBuffer {
             let serverCertificateMessage = CertificateMessage(
                 certificateRequestContext: ByteBuffer(),

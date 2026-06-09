@@ -42,7 +42,7 @@ protocol Loggable {
 /// A type that supports printing individual characters.
 ///
 /// Characters can either be streamed directly out to a log (e.g. stdout), or
-/// buffered any manually written out by the user.
+/// buffered and manually written out by the user.
 protocol CharacterPrinter {
     /// Initialize a new instance.
     ///
@@ -89,7 +89,7 @@ extension CharacterPrinter {
     ///
     /// This function will print the entire buffer, including NUL bytes and
     /// anything following them. To print NUL-terminated strings, see the
-    /// overload `write(nulTerminated)`.
+    /// overload `write(nullTerminated)`.
     func write(contentsOf buffer: UnsafeBufferPointer<UInt8>) {
         self.write(contentsOf: UnsafeRawBufferPointer(buffer))
     }
@@ -98,7 +98,7 @@ extension CharacterPrinter {
     ///
     /// This function will print the entire buffer, including NUL bytes and
     /// anything following them. To print NUL-terminated strings, see the
-    /// overload `write(nulTerminated)`.
+    /// overload `write(nullTerminated)`.
     @inline(never)  // avoid aggressive inlining of non-perf-sensitive code
     func write(contentsOf buffer: UnsafeRawBufferPointer) {
         for c in buffer {

@@ -71,7 +71,7 @@ struct SerialPrinter: CharacterPrinter {
         // already written out to serial.
     }
 }
-//
+
 // String interpolation objects cast to this type will be streamed
 // to serial via calls to `putchar`.
 typealias StreamingSerialMessage = StreamingMessage<SerialPrinter>

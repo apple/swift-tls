@@ -150,11 +150,11 @@ struct HandshakeStateMachine {
             if certificateTypes.count > 1
                 || (certificateTypes.count == 1 && certificateTypes.first != .x509) {
                 logger.debug("client sending server_certificate_types extension")
-                helloExtensions.append(.serverCertificateType(.offer(certificateTypes)),)
+                helloExtensions.append(.serverCertificateType(.offer(certificateTypes)))
             }
         case .rawPublicKey:
             logger.debug("client sending server_certificate_types extension")
-            helloExtensions.append(.serverCertificateType(PeerCertificateBundle.verificationCertificateTypes),)
+            helloExtensions.append(.serverCertificateType(PeerCertificateBundle.verificationCertificateTypes))
         case .none:
             break
         }
@@ -315,7 +315,7 @@ struct HandshakeStateMachine {
                         continue
                     }
                 case .serverCertificate:
-                    // This will transition to an intermediate state when perform asynchronous verification without and immediate result.
+                    // This will transition to an intermediate state when performing asynchronous verification without an immediate result.
                     switch try self.handleReadServerCertificateVerify(incomingBytes: &incomingBytes) {
                     case .waitingForMoreData:
                         return nil
@@ -570,7 +570,7 @@ struct HandshakeStateMachine {
         }
     }
 
-    /// Determine if the state machine is await an asynchronous local computation.
+    /// Determine if the state machine is awaiting an asynchronous local computation.
     public var awaitingAsyncComputation: Bool {
         switch self.state {
         case .idle, .clientHello, .serverHello, .serverEncryptedExtensions, .serverCertificateRequest, .serverCertificate, .serverCertificateVerify, .readyForData:
@@ -766,9 +766,9 @@ extension HandshakeStateMachine {
         case .finished(let finished):
             serverFinished = finished
         }
-        logger.info("client got server finished ")
+        logger.info("client got server finished")
 
-        let result = try self.state.receievedServerFinished(serverFinished: serverFinished, serverFinishedBytes: message.messageBytes, serializer: &self.serializer)
+        let result = try self.state.receivedServerFinished(serverFinished: serverFinished, serverFinishedBytes: message.messageBytes, serializer: &self.serializer)
         return .complete(result)
     }
 

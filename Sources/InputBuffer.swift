@@ -20,7 +20,7 @@
 /// it is always clear which code is actively reading the data, preventing
 /// mistakes where the same data is processed multiple times unnecessarily.
 struct InputBuffer: ~Escapable, ~Copyable {
-    /// Reference to the underlying storage that we're reading from,
+    /// Reference to the underlying storage that we're reading from.
     private let storage: RawSpan
 
     /// The current reading position within the storage.

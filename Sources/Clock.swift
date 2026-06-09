@@ -25,7 +25,7 @@ internal struct EmbeddedDateStub: Equatable, Comparable {
     }
 
     internal var timeIntervalSinceReferenceDate: TimeInterval {
-        fatalError("EmbeddedDateStub should not be used. timeIntervalSinceReferenceDate( not supported.")    }
+        fatalError("EmbeddedDateStub should not be used. timeIntervalSinceReferenceDate not supported.")    }
 
     init () {
         fatalError("EmbeddedDateStub should not be used. init() not supported")

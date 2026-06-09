@@ -63,7 +63,7 @@ struct ByteBuffer {
         return self.writerIndex - self.readerIndex
     }
 
-    /// Access the readable bytes as a RawSpan
+    /// Access the readable bytes as a RawSpan.
     var readableBytesSpan: RawSpan {
         let startOffset = self.readerIndex - self.backingData.startIndex
         let endOffset = startOffset + self.readableBytes

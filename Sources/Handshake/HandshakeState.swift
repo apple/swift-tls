@@ -40,16 +40,16 @@ enum HandshakeState {
     /// `ClientHello` has been sent to the server
     case clientHello(ClientHelloState)
 
-    /// The client has recieved `ServerHello`
+    /// The client has received `ServerHello`
     case serverHello(ServerHelloState)
 
-    /// The client has recieved the server's encrypted extensions
+    /// The client has received the server's encrypted extensions
     case serverEncryptedExtensions(EncryptedExtensionsState)
 
-    /// The client has recieved a certificate request from the server
+    /// The client has received a certificate request from the server
     case serverCertificateRequest(ServerCertificateRequestState)
 
-    /// The client has recieved the server's certificate.
+    /// The client has received the server's certificate.
     ///
     /// When using callbacks for verification, the verification result might not be directly available.
     /// The state machine transitions to `awaitingVerification` in case it needs to wait,
@@ -63,10 +63,10 @@ enum HandshakeState {
     /// available, transition to `serverCertificateVerify`.
     case awaitingVerification(AwaitingVerificationState)
 
-    /// The client has recieved the server's certificate verification
+    /// The client has received the server's certificate verification
     case serverCertificateVerify(ServerCertificateVerifyState)
 
-    /// The client has recieved `ServerFinished`, verified the server, sent
+    /// The client has received `ServerFinished`, verified the server, sent
     /// its second flight including:
     /// - `ClientCertificate` (if a certificate request was received. Will be empty if no real cert/rpk was available)
     /// - `ClientCertificateVerify` (if a certificate/rpk was available)
@@ -247,7 +247,7 @@ enum HandshakeState {
     /// Returns bytes for `ClientFinished`
     /// Or bytes for `Client Certificate | [Client Certificate Verify] | Client Finished`
     ///  if client auth with cert/rpk is requested
-    mutating func receievedServerFinished(serverFinished: FinishedMessage, serverFinishedBytes: ByteBuffer, serializer: inout TLSMessageSerializer) throws(TLSError) -> PartialHandshakeResult {
+    mutating func receivedServerFinished(serverFinished: FinishedMessage, serverFinishedBytes: ByteBuffer, serializer: inout TLSMessageSerializer) throws(TLSError) -> PartialHandshakeResult {
         switch self {
         case .serverCertificateVerify(var state) where state.sendClientCertificateMessage:
             // process Server finished:
@@ -484,7 +484,7 @@ extension HandshakeState {
                 case .preSharedKey(.serverHello(let acceptedIndex)):
                     if let session = clientHelloState.sessionToResume {
                         guard acceptedIndex == 0 else {
-                            logger.error("server hello is trying to resume a session we didnt offer")
+                            logger.error("server hello is trying to resume a session we didn't offer")
                             throw TLSError.negotiationFailed
                         }
 
@@ -525,7 +525,7 @@ extension HandshakeState {
             let expectedGroup = clientHelloState.configuration.fixedKeyExchangeGroup
             guard let keyShare = serverKeyShare,
                 (keyShare.group == expectedGroup) else {
-                logger.error("unsupported server key share, expected secp384 or x25519 or x25519-MLKEM768 got \(serverKeyShare?.description ?? "nil")")
+                logger.error("unsupported server key share, expected secp384 or x25519 or x25519MLKEM768 got \(serverKeyShare?.description ?? "nil")")
                 throw TLSError.negotiationFailed
             }
 

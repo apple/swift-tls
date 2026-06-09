@@ -300,7 +300,7 @@ fileprivate struct SessionKeyManager<HF: HashFunction> {
         }
     }
 
-    /// This exporter master secret.
+    /// This is the exporter master secret.
     var exporterMasterSecret: SymmetricKey? {
         switch self.state {
         case .idle, .earlySecret, .handshakeSecret:
@@ -559,7 +559,7 @@ extension SessionKeyManager {
 extension SessionKeyManager.State {
     fileprivate struct EarlySecret {
         /// This is the current state of the transcript hash. For this state, this contains the
-        /// transcipt hash through the client hello only.
+        /// transcript hash through the client hello only.
         fileprivate var transcriptHasher: HF
 
         /// This is the tail derived secret.
@@ -620,9 +620,9 @@ extension SessionKeyManager.State {
                 let calculatedBinderValue = HMAC<HF>.authenticationCode(bytes: helloDigest, using: binderKey)
                 if !(calculatedBinderValue == binderValue.readableBytesView) {
                     if calculatedBinderValue.byteCount != binderValue.readableBytes {
-                        logger.error("psk binder value not of expected length. likely epsk hash algorithm mismatch.")
+                        logger.error("psk binder value not of expected length. Likely epsk hash algorithm mismatch.")
                     }
-                    logger.error("client binder value incorrect. aborting handshake.")
+                    logger.error("client binder value incorrect. Aborting handshake.")
                     throw TLSError.decryptError
                 }
             }
@@ -661,7 +661,7 @@ extension SessionKeyManager.State {
         ) -> (earlySecretState: EarlySecret, clientHelloBytes: ByteBuffer) {
             let zeros = Array(repeating: UInt8(0), count: HF.Digest.byteCount)
 
-            // Client uses a the resumption psk or first imported psk as psk input to key schedule if available. Otherwise it uses all zeros.
+            // Client uses the resumption psk or first imported psk as psk input to key schedule if available. Otherwise it uses all zeros.
             // If server does not select one of the psks the key schedule will be recomputed with all zeros.
             var preSharedKey: SymmetricKey
             var label = PSKSource.resumption.secretLabel
@@ -811,7 +811,7 @@ extension SessionKeyManager.State {
 
     fileprivate struct HandshakeSecret {
         /// This is the current state of the transcript hash. For this state, this contains the
-        /// transcipt hash through the server hello at construction, and then potentially up to
+        /// transcript hash through the server hello at construction, and then potentially up to
         /// but not including the server Finished.
         fileprivate var transcriptHasher: HF
 
@@ -887,7 +887,7 @@ extension SessionKeyManager.State {
 
     fileprivate struct MasterSecret {
         /// This is the current state of the transcript hash. For this state, this contains the
-        /// transcipt hash through the server Finished.
+        /// transcript hash through the server Finished.
         fileprivate var transcriptHasher: HF
 
         /// This is the master secret.
@@ -905,7 +905,7 @@ extension SessionKeyManager.State {
         /// This is the server application traffic secret.
         fileprivate var serverApplicationTrafficSecret: SymmetricKey
 
-        /// This exporter master secret.
+        /// This is the exporter master secret.
         fileprivate var exporterMasterSecret: SymmetricKey
 
         init(handshakeSecret: HandshakeSecret, serverFinishedBytes: ByteBuffer) {
@@ -964,7 +964,7 @@ extension SessionKeyManager.State {
         /// This is the server application traffic secret. We save this from the previous state.
         fileprivate var serverApplicationTrafficSecret: SymmetricKey
 
-        /// This exporter master secret. We save this from the previous state.
+        /// This is the exporter master secret. We save this from the previous state.
         fileprivate var exporterMasterSecret: SymmetricKey
 
         /// The resumption master secret.

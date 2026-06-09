@@ -388,7 +388,7 @@ struct ServerHandshakeStateMachine {
         return self.state.description
     }
 
-    /// Determine if the state machine is await an asynchronous local computation.
+    /// Determine if the state machine is awaiting an asynchronous local computation.
     public var awaitingAsyncComputation: Bool {
         switch self.state {
         case .idle:

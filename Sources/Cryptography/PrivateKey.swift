@@ -180,7 +180,7 @@ extension PrivateKey {
                 return l.dataRepresentation == r.dataRepresentation
 #endif
             case (.opaqueReference(let l), .opaqueReference(let r)):
-                // compare public keys since we don't have acces to the real private
+                // compare public keys since we don't have access to the real private
                 // keys
                 return l.publicKey == r.publicKey && l.keyType == r.keyType
             default:
