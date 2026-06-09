@@ -47,10 +47,10 @@ internal struct EmbeddedDateStub: Equatable, Comparable {
 internal typealias Date = EmbeddedDateStub
 #endif
 
-/// This protocol exists for testing purposes only, and is declared internal for that reason.
+/// A clock abstraction used to inject deterministic time during testing.
 ///
-/// This protocol defines a way to obtain the current time. In release builds, we always use
-/// Foundation for this, but when testing we want a way to stub out the results.
+/// This protocol exists for testing purposes only, and is declared internal for that reason. In
+/// release builds, we always use Foundation; when testing we want a way to stub out the results.
 internal protocol SwiftTLSClock {
     func now() -> Date
 }

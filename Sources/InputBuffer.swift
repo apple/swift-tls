@@ -32,10 +32,10 @@ struct InputBuffer: ~Escapable, ~Copyable {
         self.position = position
     }
 
-    /// Determine the number of remaining, readable bytes.
+    /// The number of remaining, readable bytes.
     var byteCount: Int { storage.byteCount - position }
 
-    /// Access all of the remaining, readable bytes
+    /// All of the remaining, readable bytes.
     var bytes: RawSpan {
         @_lifetime(borrow self)
         get {
@@ -46,10 +46,10 @@ struct InputBuffer: ~Escapable, ~Copyable {
 
 // MARK: Reading
 extension InputBuffer {
-    /// Read the given number of bytes from the input buffer,
-    /// consuming those bytes and returning them in the resulting
-    /// input buffer. If there aren't enough bytes in the original
-    /// buffer, returns nil.
+    /// Reads the given number of bytes from the input buffer.
+    ///
+    /// Consumes the bytes and returns them in the resulting input buffer. Returns `nil` if the
+    /// original buffer does not contain enough bytes.
     @_lifetime(copy self)
     mutating func read(length: Int) -> InputBuffer? {
         guard self.byteCount >= length else {
@@ -247,12 +247,10 @@ extension InputBuffer {
 
 // MARK: Copying out data
 extension InputBuffer {
-    /// Copies the bytes from the buffer into the given raw
-    /// output span. This operation will copy
-    /// min(byteCount, output.freeCapacity) bytes, returning the
-    /// number of bytes written.
+    /// Copies the bytes from the buffer into the given raw output span.
     ///
-    /// Note that this operation does not consume any bytes.
+    /// Copies `min(byteCount, output.freeCapacity)` bytes and returns the number of bytes
+    /// written. This operation does not consume any bytes.
     @discardableResult
     func copy(to output: inout OutputRawSpan) -> Int {
         let bytesToWrite = min(byteCount, output.freeCapacity)

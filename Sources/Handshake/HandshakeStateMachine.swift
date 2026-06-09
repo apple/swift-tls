@@ -253,7 +253,7 @@ struct HandshakeStateMachine {
         self.parser.appendBytes(&data)
     }
 
-    /// Call with an input buffer that we've been parsing from to save any
+    /// Call with an input buffer that you've been parsing from to save any
     /// bytes remaining from the input buffer. The saved bytes typically
     /// represent a partial message.
     mutating func saveUnprocessedIncomingBytes(_ data: inout InputBuffer) {
@@ -358,7 +358,7 @@ struct HandshakeStateMachine {
 
     /// Obtain the value of the QUIC transport parameters set by the peer, if any.
     ///
-    /// Returns `nil` if the peer didn't set any, or if the handshake has not progressed to the point
+    /// Returns `nil` if the peer did not set any, or if the handshake has not progressed to the point
     /// of having a value yet.
     var peerQUICTransportParameters: ByteBuffer? {
         switch self.state {

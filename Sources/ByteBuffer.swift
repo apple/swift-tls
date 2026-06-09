@@ -24,7 +24,7 @@ extension Data {
 }
 #endif
 
-/// A type that brings over many of the conveniences of NIO's ByteBuffer, reimplemented on Data.
+/// A type that brings over many of the conveniences of SwiftNIO's `ByteBuffer`, reimplemented on `Data`.
 ///
 /// This is not a truly hardened version of NIO's ByteBuffer. It lacks some flexibility, but it's
 /// good enough for what we need.
@@ -63,7 +63,7 @@ struct ByteBuffer {
         return self.writerIndex - self.readerIndex
     }
 
-    /// Access the readable bytes as a RawSpan.
+    /// The readable bytes exposed as a `RawSpan`.
     var readableBytesSpan: RawSpan {
         let startOffset = self.readerIndex - self.backingData.startIndex
         let endOffset = startOffset + self.readableBytes

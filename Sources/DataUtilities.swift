@@ -17,7 +17,7 @@ import Foundation
 #endif
 
 extension Data {
-    /// Copy the raw bytes from the given span into a new Data instance.
+    /// Creates a `Data` instance by copying the raw bytes from the given span.
     init(copying bytes: RawSpan) {
         if bytes.byteCount == 0 {
             self = Data()
@@ -33,15 +33,16 @@ extension Data {
         }
     }
 
-    /// Append the contents of the given span to this Data instance.
+    /// Appends the contents of the given span to this `Data` instance.
     mutating func append(contentsOf bytes: RawSpan) {
         bytes.withUnsafeBytes { buffer in
             self.append(contentsOf: buffer)
         }
     }
 
-    /// Execute the given closure with a RawSpan describing the bytes.
-    /// Used as a workaround for SwiftSystem's Data missing the "bytes" property.
+    /// Calls `body` with a `RawSpan` describing the bytes.
+    ///
+    /// Used as a workaround for SwiftSystem's `Data` missing the `bytes` property.
     func withBytes<R, E: Error>(_ body: (RawSpan) throws(E) -> R) throws(E) -> R {
         let result: Result<R, E> = self.withUnsafeBytes { bufferPointer in
             do throws(E) {

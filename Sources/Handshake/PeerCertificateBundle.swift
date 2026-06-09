@@ -219,9 +219,11 @@ extension PeerCertificateBundle {
         fileprivate static let supportsUnverifiedX509 = false
     #endif
 
-    /// The certificate types we are willing to verify.
-    /// The client will offer these in the client hello under `server_certificate_types`if it is configured to expect a server raw public key
-    /// The server uses this same list to find whether it supports any of the offered certificate types in `client_certificate_types`
+    /// The certificate types this peer is willing to verify.
+    ///
+    /// The client offers these in the ClientHello under `server_certificate_types` when it is
+    /// configured to expect a server raw public key. The server uses this same list to determine
+    /// whether it supports any of the offered certificate types in `client_certificate_types`.
     static let verificationCertificateTypes: Extension.CertificateTypeExt = {
         if Self.supportsUnverifiedX509 {
             // This is a bit weird. When we really support x509 we will want to
@@ -233,9 +235,11 @@ extension PeerCertificateBundle {
         }
     }()
 
-    /// The certificate types we can provide to our peer
-    /// The client will offer this in the client hello under `client_certificate_types` if it is configured with a raw public key
-    /// The server uses this list to find whether it supports any of the offered certificate types in `client_certificate_types`
+    /// The certificate types this peer can provide to its peer.
+    ///
+    /// The client offers this in the ClientHello under `client_certificate_types` when it is
+    /// configured with a raw public key. The server uses this list to determine whether it
+    /// supports any of the offered certificate types in `client_certificate_types`.
     static let availableCertificateTypes: Extension.CertificateTypeExt = {
             // we don't offer .x509 even when we support
             // unverified x509 because that only involves whether

@@ -17,9 +17,9 @@
 
 private let logger = Logger(label: "com.apple.security.swifttls.EmbeddedPrint")
 
-/// This file provides functionality for logging interpolated strings without
-/// requiring construction of String types (which are not available in Embedded
-/// Swift).
+// This file provides functionality for logging interpolated strings without
+// requiring construction of String types (which are not available in Embedded
+// Swift).
 
 /// A type that conforms to `Loggable` can be logged using the
 /// `StreamingInterpolation` mechanisms.
@@ -44,7 +44,7 @@ protocol Loggable {
 /// Characters can either be streamed directly out to a log (e.g. stdout), or
 /// buffered and manually written out by the user.
 protocol CharacterPrinter {
-    /// Initialize a new instance.
+    /// Creates a new printer with no instance state.
     ///
     /// Unfortunately, Swift calls this from within the compiler's generated
     /// code, with a fresh object created each time string interpolation is
@@ -106,7 +106,7 @@ extension CharacterPrinter {
         }
     }
 
-    /// Write a NULL-terminated (C style) string to the printer.
+    /// Writes a null-terminated, C-style string to the printer.
     @inline(never)  // avoid aggressive inlining of non-perf-sensitive code
     func write(nullTerminated value: UnsafeBufferPointer<CChar>) {
         for c in value {

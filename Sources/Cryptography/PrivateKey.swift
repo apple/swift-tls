@@ -21,8 +21,9 @@ import CryptoKit
 @preconcurrency import Crypto
 #endif
 
-/// Generic type for all supported PrivateKey types.
-/// Loosely based on implementation in Swift Certificates.
+/// A generic wrapper over the supported private-key types.
+///
+/// Loosely based on the implementation in Swift Certificates.
 struct PrivateKey {
     var backing: BackingPrivateKey
 
@@ -120,7 +121,7 @@ public typealias SwiftTLSSignatureScheme = UInt16
 @available(SwiftTLS 0.1.0, *)
 public typealias SwiftTLSRefKeySignCallback = (Data, SwiftTLSSignatureScheme) -> Data?
 
-/// Underlying key types that are supported by SwiftTLSOpaqueReferenceKey
+/// The underlying key types supported by `SwiftTLSOpaqueReferenceKey`.
 enum SwiftTLSOpaqueReferenceKeyType: Sendable {
     case p256
 }
@@ -150,8 +151,8 @@ public struct SwiftTLSOpaqueReferenceKey {
         keyType = .p256
     }
 
-    /// Helper function to verify the SwiftTLSOpaqueReferenceKey has a key type
-    /// that is compatible with the negotiated TLS signature scheme.
+    /// Returns whether this `SwiftTLSOpaqueReferenceKey` has a key type
+    /// compatible with the negotiated TLS signature scheme.
     func supportsSignatureScheme(_ sigScheme: SignatureScheme) -> Bool {
         switch self.keyType {
         case .p256:

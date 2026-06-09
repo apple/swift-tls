@@ -74,20 +74,20 @@ extension HandshakeStateMachine {
         /// The value of the ALPN extension to send to the peer.
         let alpn: [ApplicationLayerProtocol]?
 
-        /// Fixed key exchange group to use for the handshake
+        /// The fixed key exchange group to use for the handshake.
         let fixedKeyExchangeGroup: NamedGroup?
 
-        /// List of cipher suites to use for the handshake
+        /// The list of cipher suites to use for the handshake.
         let supportedCipherSuites: [CipherSuite]?
 
-        /// An optional client ticket request
+        /// An optional client ticket request.
         var ticketRequest: ClientTicketRequest? = nil
 
         var authenticationMethod: AuthenticationMethod
 
         var verificationMethod: VerificationMethod
 
-        /// Public keys that will be accepted for this server name.
+        /// The public keys this client accepts for the configured server name.
         private var _validPeerPublicKeys: [P256.Signing.PublicKey]? {
             get {
                 if case .rawPublicKey(let publicKeys) = self.verificationMethod {

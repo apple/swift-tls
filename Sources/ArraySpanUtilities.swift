@@ -61,7 +61,7 @@ extension InlineArray where Element: Equatable {
 }
 
 extension OutputRawSpan {
-    /// Append the contents of the given raw span to this output span.
+    /// Appends the contents of the given raw span to this output span.
     mutating func append(contentsOf bytes: RawSpan) {
         for i in 0..<bytes.byteCount {
             append(bytes.unsafeLoad(fromByteOffset: i, as: UInt8.self))

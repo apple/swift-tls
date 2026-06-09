@@ -21,8 +21,9 @@ import CryptoKit
 @preconcurrency import Crypto
 #endif
 
-/// This type provides an opaque wrapper around the various public key types.
-/// Roughly based on Swift Certificate `PublicKey`
+/// An opaque wrapper around the supported public-key types.
+///
+/// Loosely based on Swift Certificates' `PublicKey`.
 struct PublicKey {
     
     var backing: BackingPublicKey
@@ -31,8 +32,8 @@ struct PublicKey {
         self.backing = backing
     }
 
-    /// Construct a public key wrapping a P256 public key.
-    /// - Parameter p256: The P256 public key to wrap.
+    /// Construct a public key wrapping a P-256 public key.
+    /// - Parameter p256: The P-256 public key to wrap.
     init(_ p256: P256.Signing.PublicKey) {
         self.backing = .p256(p256)
     }

@@ -166,9 +166,9 @@ struct SessionTicket {
         self.certificateBundle = certificateBundle
     }
 
-    /// Whether this SessionTicket can be used to resume with this client hello.
+    /// Reports whether this `SessionTicket` can resume with the provided ClientHello.
     ///
-    /// Note: This always returns `false` when using certificate callbacks for peer verification as it requires peer public keys to be set on the configuration.
+    /// Note: This always returns `false` when using certificate callbacks for peer verification, because resumption requires peer public keys to be set on the configuration.
     func isCompatibleWith(_ clientHello: ClientHello, configuration: HandshakeStateMachine.Configuration, currentTime: Date) -> Bool {
         // Gotta confirm this session is suitable. Start with the cheap ones: do the algorithms line up?
         // For now we only resume if this matches the _first_ outcomes, because it avoids needing to deal with
@@ -217,7 +217,7 @@ struct SessionTicket {
 }
 
 extension SessionTicket {
-    /// RFC 8446 says we must not cache longer than this.
+    /// The maximum cache lifetime allowed by RFC 8446.
     static fileprivate let maxLifetime = UInt32(604800)
 }
 

@@ -435,8 +435,10 @@ public class SwiftTLSHandshaker {
 
     fileprivate var asyncContinuationHandler: (@Sendable (PendingAsyncResult) -> Void)?
 
-    /// Certificate callbacks may yield results asynchronously. In that case they will call this handler with the pending result.
-    /// It is expected to do the following:
+    /// Handles asynchronous results yielded by certificate callbacks.
+    ///
+    /// Certificate callbacks may yield results asynchronously, in which case they call this handler with the pending result.
+    /// The handler is expected to do the following:
     /// - Apply the result to the handshake via `setAsyncResult`.
     /// - Call `continueHandshake` to drive the TLS handshake forward.
     ///
@@ -447,7 +449,7 @@ public class SwiftTLSHandshaker {
 
     fileprivate var asyncResult: PendingAsyncResult?
 
-    /// Set the result of an async callback. It will automatically be set to `nil` after the handshake consumes it.
+    /// Sets the result of an async callback. The result resets to `nil` after the handshake consumes it.
     /// The pending result will be supplied by the `asyncContinuationHandler`.
     public func setAsyncResult(_ result: PendingAsyncResult) {
         asyncResult = result

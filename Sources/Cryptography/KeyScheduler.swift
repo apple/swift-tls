@@ -212,7 +212,7 @@ struct ServerSessionKeyManager<HF: HashFunction> {
 }
 
 
-/// `SessionKeyManager` is responsible for implementing the TLS 1.3 Session Key Schedule.
+/// Manages the TLS 1.3 session key schedule and exposes the derived secrets to the rest of the handshake.
 ///
 /// The TLS 1.3 key schedule builds out a ratchet of keys and secrets for various purposes.
 /// This object encapsulates the current state in the key schedule and provides access to the
@@ -558,8 +558,7 @@ extension SessionKeyManager {
 
 extension SessionKeyManager.State {
     fileprivate struct EarlySecret {
-        /// This is the current state of the transcript hash. For this state, this contains the
-        /// transcript hash through the client hello only.
+        /// The transcript hasher, advanced through the ClientHello.
         fileprivate var transcriptHasher: HF
 
         /// This is the tail derived secret.
@@ -788,7 +787,7 @@ extension SessionKeyManager.State {
             return calculateFinalClientHello(binderSecret: binderSecret, clientHello: &clientHello, obfuscatedTicketAge: obfuscatedTicketAge, identity: identity)
         }
 
-        /// Attempts to use an imported psk.
+        /// Attempts to use an imported PSK.
         ///
         /// - parameters:
         ///     - epsk: The imported or raw ePSK being offered.

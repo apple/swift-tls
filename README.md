@@ -7,7 +7,7 @@ SwiftTLS supports a minimal set of features and intentionally does not allow neg
 > [!NOTE]
 > At this time, all types exposed in this package are marked as SPI and subject to change at any time.
 
-## Building and Testing
+## Building and testing
 
 > [!NOTE]
 > Building this package requires the Swift 6.3 toolchain or later. You can download toolchains from [the Swift website](https://swift.org/install).
@@ -21,7 +21,7 @@ To run all unit tests, run `swift test`. Unit tests can also be run by filtering
 % swift test --filter HandshakeStateMachineTests.testStartHandshake
 ```
 
-All unit tests are run automatically upon creation or update of a Pull Request. See [CONTRIBUTING](https://github.com/apple/swift-tls/blob/main/CONTRIBUTING.md) for details.
+GitHub runs the unit tests automatically when you open or update a pull request. See [CONTRIBUTING](https://github.com/apple/swift-tls/blob/main/CONTRIBUTING.md) for details.
 
 ## Contributions
 
