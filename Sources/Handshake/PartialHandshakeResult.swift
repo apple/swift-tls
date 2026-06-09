@@ -36,7 +36,7 @@ struct PartialHandshakeResult {
 /// This is provided whenever the encryption level changes. It represents the new encryption level, as well
 /// as the data associated with that encryption level.
 ///
-/// Each time a new encryption level comes along we have new secrets.
+/// Each new encryption level brings new secrets.
 ///
 /// Note that this excludes the "initial" level. That level is implicit: until you observe one
 /// of these values, the connection remains at the `initial` level.

@@ -85,8 +85,8 @@ struct ServerHandshakeStateMachine {
         self.parser.appendBytes(&data)
     }
 
-    /// Call with an input buffer that we've been parsing from to save any
-    /// bytes remaining from the input buffer. These generally correspond to a
+    /// Call with an input buffer that the parser has been reading from to save any
+    /// bytes remaining from the input buffer. The saved bytes typically represent a
     /// partial message.
     mutating func saveUnprocessedIncomingBytes(_ data: inout InputBuffer) {
         let byteCount = data.byteCount
@@ -349,9 +349,9 @@ struct ServerHandshakeStateMachine {
         }
     }
 
-    /// Signals whether we have accepted early data.
+    /// Signals whether the server has accepted early data.
     ///
-    /// `false` if the ServerHello did not contain an `early_data` extension, or `true` if it did.
+    /// `false` if the `ServerHello` did not contain an `early_data` extension, or `true` if it did.
     var earlyDataAccepted: Bool? {
 
         switch self.state {

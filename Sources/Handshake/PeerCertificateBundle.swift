@@ -202,7 +202,7 @@ struct PeerCertificateBundle {
 }
 
 extension PeerCertificateBundle {
-    /// The kinds of certificate bundle we support.
+    /// The kinds of certificate bundle this package supports.
     fileprivate enum Bundle {
         case rawPublicKey(P256.Signing.PublicKey)
         case x509([CertificateMessage.CertificateEntry])
@@ -210,7 +210,7 @@ extension PeerCertificateBundle {
 }
 
 extension PeerCertificateBundle {
-    /// Whether we support unverified X.509.
+    /// Whether this package supports unverified X.509.
     ///
     /// This is `true` only when the `SWIFTTLS_SUPPORT_UNVERIFIED_X509` compile flag is passed.
     #if SWIFTTLS_SUPPORT_UNVERIFIED_X509
@@ -221,7 +221,7 @@ extension PeerCertificateBundle {
 
     /// The certificate types this peer is willing to verify.
     ///
-    /// The client offers these in the ClientHello under `server_certificate_types` when it is
+    /// The client offers these in the `ClientHello` under `server_certificate_types` when it is
     /// configured to expect a server raw public key. The server uses this same list to determine
     /// whether it supports any of the offered certificate types in `client_certificate_types`.
     static let verificationCertificateTypes: Extension.CertificateTypeExt = {
@@ -237,7 +237,7 @@ extension PeerCertificateBundle {
 
     /// The certificate types this peer can provide to its peer.
     ///
-    /// The client offers this in the ClientHello under `client_certificate_types` when it is
+    /// The client offers this in the `ClientHello` under `client_certificate_types` when it is
     /// configured with a raw public key. The server uses this list to determine whether it
     /// supports any of the offered certificate types in `client_certificate_types`.
     static let availableCertificateTypes: Extension.CertificateTypeExt = {

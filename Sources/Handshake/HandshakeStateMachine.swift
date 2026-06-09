@@ -494,7 +494,7 @@ struct HandshakeStateMachine {
         }
     }
 
-    /// Obtain whether we offered an EPSK.
+    /// Reports whether the client offered an EPSK.
     ///
     /// Returns `false` if the handshake has not progressed to the point of having a value yet.
     var epskOffered: Bool {
@@ -550,7 +550,7 @@ struct HandshakeStateMachine {
     /// Signals whether the peer has accepted early data.
     ///
     /// This property is `nil` if the handshake has not proceeded to the point of receiving the EncryptedExtensions message,
-    /// `false` if the ServerHello did not contain an `early_data` extension, or `true` if it did.
+    /// `false` if the `ServerHello` did not contain an `early_data` extension, or `true` if it did.
     var earlyDataAccepted: Bool? {
         switch self.state {
         case .idle, .clientHello, .serverHello:
