@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+@available(SwiftTLS 0.1.0, *)
 extension Array where Element == UInt8 {
     /// Creates an array by copying the bytes of the given raw span.
     ///
@@ -26,6 +27,7 @@ extension Array where Element == UInt8 {
     }
 }
 
+@available(SwiftTLS 0.1.0, *)
 extension InlineArray where Element == UInt8 {
     /// Creates an inline array by copying the bytes of the given raw span.
     ///
@@ -40,6 +42,7 @@ extension InlineArray where Element == UInt8 {
     }
 }
 
+@available(SwiftTLS 0.1.0, *)
 extension Hasher {
     mutating func combine(bytes: RawSpan) {
         bytes.withUnsafeBytes { buffer in
@@ -48,6 +51,7 @@ extension Hasher {
     }
 }
 
+@available(SwiftTLS 0.1.0, *)
 extension InlineArray where Element: Equatable {
     static func ==(lhs: Self, rhs: Self) -> Bool {
         for i in lhs.indices {
@@ -60,6 +64,7 @@ extension InlineArray where Element: Equatable {
     }
 }
 
+@available(SwiftTLS 0.1.0, *)
 extension OutputRawSpan {
     /// Appends the contents of the given raw span to this output span.
     mutating func append(contentsOf bytes: RawSpan) {
@@ -69,6 +74,7 @@ extension OutputRawSpan {
     }
 }
 
+@available(SwiftTLS 0.1.0, *)
 extension RawSpan {
     subscript(index: Int) -> UInt8 {
         unsafeLoad(fromByteOffset: index, as: UInt8.self)

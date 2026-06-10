@@ -22,7 +22,7 @@ import CryptoKit
 @preconcurrency import Crypto
 #endif
 
-@available(iOS 27.0, *)
+@available(SwiftTLS 0.1.0, *)
 class SwiftTLSProtocolTests: XCTestCase {
     var serverSigningKey = P256.Signing.PrivateKey()
     var clientSigningKey = P256.Signing.PrivateKey()

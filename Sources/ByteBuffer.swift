@@ -28,6 +28,7 @@ extension Data {
 ///
 /// This is not a truly hardened version of NIO's ByteBuffer. It lacks some flexibility, but it's
 /// good enough for what we need.
+@available(SwiftTLS 0.1.0, *)
 struct ByteBuffer {
     private var backingData: Data
     private(set) var readerIndex: Data.Index
@@ -217,6 +218,7 @@ struct ByteBuffer {
     }
 }
 
+@available(SwiftTLS 0.1.0, *)
 extension ByteBuffer {
     @discardableResult
     mutating func writeVariableLengthVector<LengthField: FixedWidthInteger>(
@@ -281,6 +283,7 @@ extension ByteBuffer {
     }
 }
 
+@available(SwiftTLS 0.1.0, *)
 extension ByteBuffer: Hashable {
     static func ==(lhs: ByteBuffer, rhs: ByteBuffer) -> Bool {
         return lhs.readableBytesView == rhs.readableBytesView
@@ -291,6 +294,7 @@ extension ByteBuffer: Hashable {
     }
 }
 
+@available(SwiftTLS 0.1.0, *)
 extension ByteBuffer {
     /// Execute the given `body` function with an input buffer that can access
     /// the readable part of the byte buffer. Bytes consumed from the input

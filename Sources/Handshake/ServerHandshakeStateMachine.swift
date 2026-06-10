@@ -26,6 +26,7 @@ import CryptoKit
 #if canImport(Darwin) || SWIFTTLS_EXCLAVEKIT
 import os.log
 
+@available(macOS 11, iOS 14, tvOS 14, watchOS 7, *)
 private let logger = Logger(subsystem: "com.apple.security.swifttls", category: "ServerHandshakeStateMachine")
 #elseif SWIFTTLS_EMBEDDED || SWIFTTLS_DRIVERKIT
 private let logger = Logger(label: "com.apple.security.swifttls.ServerHandshakeStateMachine")
@@ -35,6 +36,7 @@ import Logging
 private let logger = Logger(label: "com.apple.security.swifttls.ServerHandshakeStateMachine")
 #endif
 
+@available(SwiftTLS 0.1.0, *)
 struct SwiftOfferedEPSK {
     let external_identity: Data
     let context: Data?
@@ -44,9 +46,12 @@ struct SwiftOfferedEPSK {
     }
 }
 
+@available(SwiftTLS 0.1.0, *)
 typealias externalPSKCompletionCallback = (Int, EPSK?) -> Void
+@available(SwiftTLS 0.1.0, *)
 typealias externalPSKSelectionCallback = ([SwiftOfferedEPSK], @escaping externalPSKCompletionCallback) -> Void
 
+@available(SwiftTLS 0.1.0, *)
 struct ServerHandshakeStateMachine {
     private var parser = HandshakeMessageParser()
     private var serializer = TLSMessageSerializer()
@@ -469,6 +474,7 @@ struct ServerHandshakeStateMachine {
 
 }
 
+@available(SwiftTLS 0.1.0, *)
 extension ServerHandshakeStateMachine {
     private mutating func handleReadClientHello(incomingBytes: inout InputBuffer) throws(TLSError) -> StepResult {
         logger.debug("server expecting client hello")
@@ -890,6 +896,7 @@ extension ServerHandshakeStateMachine {
     }
 }
 
+@available(SwiftTLS 0.1.0, *)
 extension ServerHandshakeStateMachine {
     fileprivate enum StepResult {
         case partialResult(PartialHandshakeResult)

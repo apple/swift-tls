@@ -24,6 +24,7 @@ import CryptoKit
 /// A generic wrapper over the supported private-key types.
 ///
 /// Loosely based on the implementation in Swift Certificates.
+@available(SwiftTLS 0.1.0, *)
 struct PrivateKey {
     var backing: BackingPrivateKey
 
@@ -93,8 +94,10 @@ struct PrivateKey {
     }
 }
 
+@available(SwiftTLS 0.1.0, *)
 extension PrivateKey: Hashable {}
 
+@available(SwiftTLS 0.1.0, *)
 extension PrivateKey: CustomStringConvertible {
     var description: String {
         switch self.backing {
@@ -164,6 +167,7 @@ public struct SwiftTLSOpaqueReferenceKey {
     }
 }
 
+@available(SwiftTLS 0.1.0, *)
 extension PrivateKey {
     enum BackingPrivateKey: Hashable {
         case p256(P256.Signing.PrivateKey)

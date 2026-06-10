@@ -23,6 +23,7 @@ import CryptoKit
 #endif
 
 
+@available(SwiftTLS 0.1.0, *)
 class HandshakeStateMachineTests: XCTestCase {
 
     var serverPrivateKey = P384EphemeralKey()
@@ -2157,6 +2158,7 @@ class HandshakeStateMachineTests: XCTestCase {
     }
 }
 
+@available(SwiftTLS 0.1.0, *)
 extension ClientHello {
 
     var clientKeyShare: Extension.KeyShare.KeyShareEntry {
@@ -2240,6 +2242,7 @@ extension ClientHello {
     }
 }
 
+@available(SwiftTLS 0.1.0, *)
 extension Optional where Wrapped == PartialHandshakeResult {
     enum EncryptionLevelType {
         case earlyData
@@ -2294,6 +2297,7 @@ func assertNewEncryptionLevel(_ level: EncryptionLevelType, _ readOrWrite: ReadO
     }
 }
 
+@available(SwiftTLS 0.1.0, *)
 extension PartialHandshakeResult {
     func assertNewEncryptionLevel(_ level: Optional<PartialHandshakeResult>.EncryptionLevelType, _ readOrWrite: Optional<PartialHandshakeResult>.ReadOrWrite, file: StaticString = #filePath, line: UInt = #line) {
         Optional(self).assertNewEncryptionLevel(level, readOrWrite, file: file, line: line)

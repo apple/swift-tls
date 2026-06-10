@@ -21,12 +21,14 @@ import CryptoKit
 @preconcurrency import Crypto
 #endif
 
+@available(macOS 10.15, iOS 13, tvOS 13, watchOS 6, *)
 extension HashFunction {
     static var zeroHash: Self.Digest {
         return Self().finalize()
     }
 }
 
+@available(macOS 10.15, iOS 13, tvOS 13, watchOS 6, *)
 extension HMAC {
     static func authenticationCode<Bytes: ContiguousBytes>(bytes: Bytes, using key: SymmetricKey) -> HashedAuthenticationCode<H> {
         return bytes.withUnsafeBytes {

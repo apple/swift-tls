@@ -23,6 +23,7 @@ import CryptoKit
 
 #if canImport(Darwin) || SWIFTTLS_EXCLAVEKIT
 import os.log
+@available(macOS 11, iOS 14, tvOS 14, watchOS 7, *)
 private let logger = Logger(subsystem: "com.apple.security.swifttls", category: "SessionTicket")
 #elseif SWIFTTLS_EMBEDDED || SWIFTTLS_DRIVERKIT
 private let logger = Logger(label: "com.apple.security.swifttls.SessionTicket")
@@ -38,6 +39,7 @@ private let logger = Logger(label: "com.apple.security.swifttls.SessionTicket")
 /// ticket age information, and details about the underlying handshake so that resumption can be validated.
 ///
 /// Critically, you can serialize and deserialize session tickets.
+@available(SwiftTLS 0.1.0, *)
 struct SessionTicket {
     var issued: Date
 
@@ -216,13 +218,16 @@ struct SessionTicket {
     }
 }
 
+@available(SwiftTLS 0.1.0, *)
 extension SessionTicket {
     /// The maximum cache lifetime allowed by RFC 8446.
     static fileprivate let maxLifetime = UInt32(604800)
 }
 
+@available(SwiftTLS 0.1.0, *)
 extension SessionTicket: Equatable { }
 
+@available(SwiftTLS 0.1.0, *)
 extension ByteBuffer {
     mutating func writeLengthPrefixedString(_ string: String) {
         self.writeLengthPrefixedBytes(string.utf8)

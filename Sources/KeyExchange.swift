@@ -17,12 +17,15 @@ import Foundation
 #endif
 #if canImport(CryptoKit)
 import CryptoKit
+@available(macOS 10.15, iOS 13, tvOS 13, watchOS 6, *)
 typealias SymmetricKey = CryptoKit.SymmetricKey
 #elseif canImport(Crypto)
 @preconcurrency import Crypto
+@available(macOS 10.15, iOS 13, tvOS 13, watchOS 6, *)
 typealias SymmetricKey = Crypto.SymmetricKey
 #endif
 
+@available(SwiftTLS 0.1.0, *)
 protocol EphemeralPrivateKey {
     var namedGroup: NamedGroup { get }
     var publicKeyData: Data { get }
@@ -30,6 +33,7 @@ protocol EphemeralPrivateKey {
     func decap(ciphertextData: Data) throws(TLSError) -> SymmetricKey
 }
 
+@available(SwiftTLS 0.1.0, *)
 enum GeneratedEphemeralPrivateKey: EphemeralPrivateKey {
     var namedGroup: NamedGroup {
         get {
@@ -84,6 +88,7 @@ enum GeneratedEphemeralPrivateKey: EphemeralPrivateKey {
     case X25519MLKEM768(X25519MLKEM768EphemeralKey)
 }
 
+@available(SwiftTLS 0.1.0, *)
 struct Curve25519EphemeralKey: EphemeralPrivateKey {
     var privateKey: Curve25519.KeyAgreement.PrivateKey
 
@@ -115,6 +120,7 @@ struct Curve25519EphemeralKey: EphemeralPrivateKey {
     }
 }
 
+@available(SwiftTLS 0.1.0, *)
 struct P384EphemeralKey: EphemeralPrivateKey {
     typealias T = P384.KeyAgreement.PrivateKey
     var privateKey: P384.KeyAgreement.PrivateKey
@@ -147,7 +153,7 @@ struct P384EphemeralKey: EphemeralPrivateKey {
     }
 }
 
-@available(iOS 17.0, macOS 14.0, watchOS 10.0, tvOS 17.0, macCatalyst 17.0, *)
+@available(SwiftTLS 0.1.0, *)
 struct X25519MLKEM768EphemeralKey: EphemeralPrivateKey {
     var privateKeyA: Curve25519.KeyAgreement.PrivateKey
     var privateKeyB: MLKEM768.PrivateKey
@@ -215,6 +221,7 @@ struct X25519MLKEM768EphemeralKey: EphemeralPrivateKey {
     }
 }
 
+@available(SwiftTLS 0.1.0, *)
 func generateEphemeralKeyForNamedGroup(_ group: NamedGroup) -> GeneratedEphemeralPrivateKey? {
     switch group {
     case .secp384:
@@ -231,6 +238,7 @@ func generateEphemeralKeyForNamedGroup(_ group: NamedGroup) -> GeneratedEphemera
     }
 }
 
+@available(SwiftTLS 0.1.0, *)
 extension SymmetricKey {
     init(_copying bytes: RawSpan) {
         self = bytes.withUnsafeBytes { buffer in

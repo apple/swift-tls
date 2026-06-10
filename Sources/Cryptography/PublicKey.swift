@@ -24,8 +24,9 @@ import CryptoKit
 /// An opaque wrapper around the supported public-key types.
 ///
 /// Loosely based on Swift Certificates' `PublicKey`.
+@available(macOS 11, iOS 14, tvOS 14, watchOS 7, *)
 struct PublicKey {
-    
+
     var backing: BackingPublicKey
 
     internal init(backing: BackingPublicKey) {
@@ -39,16 +40,20 @@ struct PublicKey {
     }
 }
 
+@available(macOS 11, iOS 14, tvOS 14, watchOS 7, *)
 extension PublicKey {
     var derRepresentation: Data {
         self.backing.derRepresentation()
     }
 }
 
+@available(SwiftTLS 0.1.0, *)
 extension PublicKey: Hashable {}
 
+@available(SwiftTLS 0.1.0, *)
 extension PublicKey: Sendable {}
 
+@available(SwiftTLS 0.1.0, *)
 extension PublicKey: CustomStringConvertible {
     var description: String {
         switch self.backing {
@@ -58,6 +63,7 @@ extension PublicKey: CustomStringConvertible {
     }
 }
 
+@available(macOS 11, iOS 14, tvOS 14, watchOS 7, *)
 extension PublicKey {
     enum BackingPublicKey: Hashable, Sendable {
         case p256(P256.Signing.PublicKey)

@@ -22,6 +22,7 @@ import CryptoKit
 #endif
 #if canImport(Darwin) || SWIFTTLS_EXCLAVEKIT
 import os.log
+@available(macOS 11, iOS 14, tvOS 14, watchOS 7, *)
 private let logger = Logger(subsystem: "com.apple.security.swifttls", category: "SwiftTLSProtocol")
 #elseif SWIFTTLS_EMBEDDED || SWIFTTLS_DRIVERKIT
 private let logger = Logger(label: "com.apple.security.swifttls.SwiftTLSProtocol")
@@ -149,6 +150,7 @@ public struct SwiftTLSOptions {
 
 // MARK: Common helper functions
 
+@available(SwiftTLS 0.1.0, *)
 fileprivate extension CipherSuite {
     static func convertArray(_ input: [SwiftTLSOptions.CipherSuite]?) -> [CipherSuite]? {
         guard let input else { return nil }
@@ -163,6 +165,7 @@ fileprivate extension CipherSuite {
     }
 }
 
+@available(SwiftTLS 0.1.0, *)
 fileprivate func epskFromSwiftTLSOptions(_ options: SwiftTLSOptions) throws(SwiftTLSError) -> EPSK? {
     var epsk: EPSK? = nil
     if let externalPSK = options.externalPSK {
@@ -181,6 +184,7 @@ fileprivate func epskFromSwiftTLSOptions(_ options: SwiftTLSOptions) throws(Swif
     return epsk
 }
 
+@available(SwiftTLS 0.1.0, *)
 fileprivate func clientStateMachineFromTLSOptions(options: SwiftTLSOptions, forQUIC: Bool = true, latestError: inout LatestError?) throws(SwiftTLSError) -> HandshakeStateMachine {
     guard let applicationProtocols = options.applicationProtocols else {
         logger.error("Cannot start the handshake, missing application protocol")
@@ -285,6 +289,7 @@ fileprivate func clientStateMachineFromTLSOptions(options: SwiftTLSOptions, forQ
 
 #if !SWIFTTLS_CLIENT_ONLY
 
+@available(SwiftTLS 0.1.0, *)
 fileprivate func serverStateMachineFromTLSOptions(options: SwiftTLSOptions, forQUIC: Bool = true) throws(SwiftTLSError) -> ServerHandshakeStateMachine {
     var keys: [P256.Signing.PublicKey]? = nil
     if let p256Keys = options.trustedRawPublicKeyP256PublicKeys {
@@ -353,11 +358,13 @@ fileprivate func serverStateMachineFromTLSOptions(options: SwiftTLSOptions, forQ
 
 #endif
 
+@available(SwiftTLS 0.1.0, *)
 fileprivate enum LatestError {
     case tlsError(TLSError)
     case cryptoKitMetaError(CryptoKitMetaError)
 }
 
+@available(SwiftTLS 0.1.0, *)
 fileprivate func errorCodeFromLatestError(_ latestError: LatestError?) -> Int32 {
     guard let latestError = latestError else {
         #if canImport(CryptoKit) && !SWIFTTLS_EMBEDDED && !SWIFTTLS_EXCLAVEKIT && !SWIFTTLS_DRIVERKIT
@@ -523,6 +530,7 @@ public class SwiftTLSHandshaker {
     }
 }
 
+@available(SwiftTLS 0.1.0, *)
 class SwiftTLSClientHandshaker: SwiftTLSHandshaker {
     var stateMachine: HandshakeStateMachine?
 
@@ -646,6 +654,7 @@ class SwiftTLSClientHandshaker: SwiftTLSHandshaker {
 
 #if !SWIFTTLS_CLIENT_ONLY
 
+@available(SwiftTLS 0.1.0, *)
 class SwiftTLSServerHandshaker: SwiftTLSHandshaker {
     var stateMachine: ServerHandshakeStateMachine?
     var clientAppSecret: SymmetricKey? = nil

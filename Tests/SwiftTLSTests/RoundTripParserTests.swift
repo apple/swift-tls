@@ -18,6 +18,7 @@ import XCTest
 #endif
 
 
+@available(SwiftTLS 0.1.0, *)
 class RoundTripParserTests: XCTestCase {
     private func roundTripTest_oneShot(_ message: HandshakeMessage) throws {
         var buffer = ByteBuffer()
@@ -229,6 +230,7 @@ class RoundTripParserTests: XCTestCase {
     }
 }
 
+@available(SwiftTLS 0.1.0, *)
 extension ByteBuffer {
     init(_ string: String) {
         self = ByteBuffer(data: Data(string.utf8))

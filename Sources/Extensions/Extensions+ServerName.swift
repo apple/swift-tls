@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+@available(SwiftTLS 0.1.0, *)
 extension Extension {
     enum ServerName {
         case clientHello(Names)
@@ -20,6 +21,7 @@ extension Extension {
 
 }
 
+@available(SwiftTLS 0.1.0, *)
 extension Extension.ServerName {
     struct Names {
         var hostName: ByteBuffer
@@ -28,10 +30,13 @@ extension Extension.ServerName {
     }
 }
 
+@available(SwiftTLS 0.1.0, *)
 extension Extension.ServerName: Hashable { }
 
+@available(SwiftTLS 0.1.0, *)
 extension Extension.ServerName.Names: Hashable { }
 
+@available(SwiftTLS 0.1.0, *)
 extension InputBuffer {
     mutating func readServerName(messageType: HandshakeType) throws(TLSError) -> Extension.ServerName {
         switch messageType {
@@ -100,6 +105,7 @@ extension InputBuffer {
     }
 }
 
+@available(SwiftTLS 0.1.0, *)
 extension ByteBuffer {
     @discardableResult
     mutating func writeServerName(_ serverName: Extension.ServerName) -> Int {

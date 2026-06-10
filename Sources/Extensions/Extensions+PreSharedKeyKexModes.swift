@@ -12,12 +12,14 @@
 //
 //===----------------------------------------------------------------------===//
 
+@available(SwiftTLS 0.1.0, *)
 extension Extension {
     struct PreSharedKeyKexModes {
         var modes: [Mode]
     }
 }
 
+@available(SwiftTLS 0.1.0, *)
 extension Extension.PreSharedKeyKexModes {
     struct Mode: RawRepresentable, Hashable {
         var rawValue: UInt8
@@ -31,8 +33,10 @@ extension Extension.PreSharedKeyKexModes {
     }
 }
 
+@available(SwiftTLS 0.1.0, *)
 extension Extension.PreSharedKeyKexModes: Hashable { }
 
+@available(SwiftTLS 0.1.0, *)
 extension InputBuffer {
     mutating func readPreSharedKeyKexModes(messageType: HandshakeType) throws(TLSError) -> Extension.PreSharedKeyKexModes {
         switch messageType {
@@ -56,6 +60,7 @@ extension InputBuffer {
     }
 }
 
+@available(SwiftTLS 0.1.0, *)
 extension ByteBuffer {
     @discardableResult
     mutating func writePreSharedKeyKexModes(_ modes: Extension.PreSharedKeyKexModes) -> Int {

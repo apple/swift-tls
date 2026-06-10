@@ -19,6 +19,7 @@
 /// a client, such as incoming network data. It is non-copyable to ensure that
 /// it is always clear which code is actively reading the data, preventing
 /// mistakes where the same data is processed multiple times unnecessarily.
+@available(SwiftTLS 0.1.0, *)
 struct InputBuffer: ~Escapable, ~Copyable {
     /// Reference to the underlying storage that we're reading from.
     private let storage: RawSpan
@@ -45,6 +46,7 @@ struct InputBuffer: ~Escapable, ~Copyable {
 }
 
 // MARK: Reading
+@available(SwiftTLS 0.1.0, *)
 extension InputBuffer {
     /// Reads the given number of bytes from the input buffer.
     ///
@@ -212,6 +214,7 @@ extension InputBuffer {
 }
 
 // MARK: Tentative reading
+@available(SwiftTLS 0.1.0, *)
 extension InputBuffer {
     /// Execute the given body to allow it to read from this split
     /// input buffer (provided as an argument). If the body returns
@@ -237,6 +240,7 @@ extension InputBuffer {
 }
 
 // MARK: Seeking
+@available(SwiftTLS 0.1.0, *)
 extension InputBuffer {
     /// Seek to a specific position.
     mutating func seek(to position: Int) {
@@ -246,6 +250,7 @@ extension InputBuffer {
 }
 
 // MARK: Copying out data
+@available(SwiftTLS 0.1.0, *)
 extension InputBuffer {
     /// Copies the bytes from the buffer into the given raw output span.
     ///

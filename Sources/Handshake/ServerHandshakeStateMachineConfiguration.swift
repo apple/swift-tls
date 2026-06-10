@@ -26,6 +26,7 @@ import Foundation
 
 #if canImport(Darwin) || SWIFTTLS_EXCLAVEKIT
 import os.log
+@available(macOS 11, iOS 14, tvOS 14, watchOS 7, *)
 private let logger = Logger(subsystem: "com.apple.security.swifttls", category: "ServerHandshakeStateMachineConfiguration")
 #elseif SWIFTTLS_EMBEDDED || SWIFTTLS_DRIVERKIT
 private let logger = Logger(label: "com.apple.security.swifttls.ServerHandshakeStateMachineConfiguration")
@@ -35,6 +36,7 @@ import Logging
 private let logger = Logger(label: "com.apple.security.swifttls.ServerHandshakeStateMachineConfiguration")
 #endif
 
+@available(SwiftTLS 0.1.0, *)
 extension ServerHandshakeStateMachine {
     enum AuthenticationMethod {
         case noAuthAvailable

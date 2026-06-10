@@ -29,6 +29,7 @@ import CryptoKit
 /// This does not validate the underlying HKDF implementation because that's owned by CryptoKit.
 ///
 /// These tests use ECDHE keys that are not necessarily supported in the underlying implementation. This doesn't matter!
+@available(SwiftTLS 0.1.0, *)
 final class KeyScheduleTests: XCTestCase {
     func test1RTTExample() throws {
         /// This will run through an example flow of a 1RTT setup using RFC 8448.
@@ -87,6 +88,7 @@ final class KeyScheduleTests: XCTestCase {
 }
 
 // MARK: Static data
+@available(SwiftTLS 0.1.0, *)
 extension KeyScheduleTests {
     static let oneRTTClientX25519Key = try! Curve25519.KeyAgreement.PrivateKey(
         rawRepresentation: [0x49, 0xaf, 0x42, 0xba, 0x7f, 0x79, 0x94, 0x85, 0x2d, 0x71, 0x3e, 0xf2,
@@ -532,6 +534,7 @@ extension KeyScheduleTests {
     )
 }
 
+@available(SwiftTLS 0.1.0, *)
 struct FrozenInTimeClock: SwiftTLSClock {
     var time: Date
 

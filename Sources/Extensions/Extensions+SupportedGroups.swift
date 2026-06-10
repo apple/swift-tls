@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+@available(SwiftTLS 0.1.0, *)
 extension Extension {
     struct SupportedGroups {
         var groups: [NamedGroup]
@@ -22,8 +23,10 @@ extension Extension {
     }
 }
 
+@available(SwiftTLS 0.1.0, *)
 extension Extension.SupportedGroups: Hashable { }
 
+@available(SwiftTLS 0.1.0, *)
 extension InputBuffer {
     mutating func readSupportedGroups(messageType: HandshakeType) throws(TLSError) -> Extension.SupportedGroups {
         switch messageType {
@@ -51,6 +54,7 @@ extension InputBuffer {
     }
 }
 
+@available(SwiftTLS 0.1.0, *)
 extension ByteBuffer {
     @discardableResult
     mutating func writeSupportedGroups(_ groups: Extension.SupportedGroups) -> Int {

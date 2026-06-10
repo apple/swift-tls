@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+@available(SwiftTLS 0.1.0, *)
 extension Extension {
     struct SignatureAlgorithms {
         var schemes: [SignatureScheme]
@@ -22,8 +23,10 @@ extension Extension {
     }
 }
 
+@available(SwiftTLS 0.1.0, *)
 extension Extension.SignatureAlgorithms: Hashable { }
 
+@available(SwiftTLS 0.1.0, *)
 extension InputBuffer {
     mutating func readSignatureAlgorithms(messageType: HandshakeType) throws(TLSError) -> Extension.SignatureAlgorithms {
         switch messageType {
@@ -51,6 +54,7 @@ extension InputBuffer {
     }
 }
 
+@available(SwiftTLS 0.1.0, *)
 extension ByteBuffer {
     @discardableResult
     mutating func writeSignatureAlgorithms(_ algorithms: Extension.SignatureAlgorithms) -> Int {

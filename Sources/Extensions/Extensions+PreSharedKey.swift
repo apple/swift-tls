@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+@available(SwiftTLS 0.1.0, *)
 extension Extension {
     enum PreSharedKey {
         case clientHello(OfferedPSKs)
@@ -19,6 +20,7 @@ extension Extension {
     }
 }
 
+@available(SwiftTLS 0.1.0, *)
 extension Extension.PreSharedKey {
     struct OfferedPSKs {
         var identities: [PSKIdentity]
@@ -27,6 +29,7 @@ extension Extension.PreSharedKey {
     }
 }
 
+@available(SwiftTLS 0.1.0, *)
 extension Extension.PreSharedKey.OfferedPSKs {
     struct PSKIdentity {
         var identity: ByteBuffer
@@ -35,20 +38,26 @@ extension Extension.PreSharedKey.OfferedPSKs {
     }
 }
 
+@available(SwiftTLS 0.1.0, *)
 extension Extension.PreSharedKey.OfferedPSKs {
     struct PSKBinderEntry {
         var serializedBinder: ByteBuffer
     }
 }
 
+@available(SwiftTLS 0.1.0, *)
 extension Extension.PreSharedKey: Hashable { }
 
+@available(SwiftTLS 0.1.0, *)
 extension Extension.PreSharedKey.OfferedPSKs: Hashable { }
 
+@available(SwiftTLS 0.1.0, *)
 extension Extension.PreSharedKey.OfferedPSKs.PSKIdentity: Hashable { }
 
+@available(SwiftTLS 0.1.0, *)
 extension Extension.PreSharedKey.OfferedPSKs.PSKBinderEntry: Hashable { }
 
+@available(SwiftTLS 0.1.0, *)
 extension InputBuffer {
     mutating func readPSKIdentity() throws(TLSError) -> Extension.PreSharedKey.OfferedPSKs.PSKIdentity? {
         guard let identity: ByteBuffer = try? self.readVariableLengthVector(lengthFieldType: UInt16.self, { buffer in
@@ -129,6 +138,7 @@ extension InputBuffer {
     }
 }
 
+@available(SwiftTLS 0.1.0, *)
 extension ByteBuffer {
     @discardableResult
     mutating func writePreSharedKey(_ psk: Extension.PreSharedKey) -> Int {

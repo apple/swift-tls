@@ -29,6 +29,7 @@ import CryptoKit
 import Security
 #endif
 
+@available(SwiftTLS 0.1.0, *)
 final class ClientCallbackFixtures: Sendable {
     let serverSigningKey: P256.Signing.PrivateKey
     let dummySignatureAlgorithm: UInt16
@@ -152,6 +153,7 @@ final class ClientCallbackFixtures: Sendable {
     }
 }
 
+@available(SwiftTLS 0.1.0, *)
 class HandshakeStateMachineCallbackTests: XCTestCase {
 
     var serverPrivateKey = P384EphemeralKey()

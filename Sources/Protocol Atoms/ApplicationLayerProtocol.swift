@@ -18,6 +18,7 @@ import Foundation
 
 typealias ApplicationLayerProtocol = String
 
+@available(SwiftTLS 0.1.0, *)
 extension InputBuffer {
     mutating func readApplicationLayerProtocol() -> ApplicationLayerProtocol? {
         guard let length = self.readInteger(as: UInt8.self) else {
@@ -33,6 +34,7 @@ extension InputBuffer {
     }
 }
 
+@available(SwiftTLS 0.1.0, *)
 extension ByteBuffer {
     @discardableResult
     mutating func writeApplicationLayerProtocol(_ appProtocol: ApplicationLayerProtocol) -> Int {

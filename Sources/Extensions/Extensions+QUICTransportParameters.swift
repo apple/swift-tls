@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+@available(SwiftTLS 0.1.0, *)
 extension Extension {
     // For consistency with other implementations, we don't introspect this field at all.
     struct QUICTransportParameters {
@@ -19,8 +20,10 @@ extension Extension {
     }
 }
 
+@available(SwiftTLS 0.1.0, *)
 extension Extension.QUICTransportParameters: Hashable { }
 
+@available(SwiftTLS 0.1.0, *)
 extension InputBuffer {
     mutating func readQUICTransportParameters(messageType: HandshakeType) throws(TLSError) -> Extension.QUICTransportParameters {
         switch messageType {
@@ -33,6 +36,7 @@ extension InputBuffer {
     }
 }
 
+@available(SwiftTLS 0.1.0, *)
 extension ByteBuffer {
     @discardableResult
     mutating func writeQUICTransportParameters(_ transportParameters: Extension.QUICTransportParameters) -> Int {
