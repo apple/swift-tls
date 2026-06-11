@@ -23,7 +23,6 @@ extension Extension {
 @available(SwiftTLS 0.1.0, *)
 extension Extension.TicketRequest: Hashable { }
 
-@available(SwiftTLS 0.1.0, *)
 struct ClientTicketRequest: Hashable, CustomStringConvertible {
     var newSessionCount: UInt8
     var resumptionCount: UInt8

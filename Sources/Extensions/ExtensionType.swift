@@ -12,7 +12,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-@available(SwiftTLS 0.1.0, *)
 struct ExtensionType: RawRepresentable, Sendable {
     var rawValue: UInt16
 

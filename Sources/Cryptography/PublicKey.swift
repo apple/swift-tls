@@ -47,13 +47,13 @@ extension PublicKey {
     }
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(macOS 11, iOS 14, tvOS 14, watchOS 7, *)
 extension PublicKey: Hashable {}
 
-@available(SwiftTLS 0.1.0, *)
+@available(macOS 11, iOS 14, tvOS 14, watchOS 7, *)
 extension PublicKey: Sendable {}
 
-@available(SwiftTLS 0.1.0, *)
+@available(macOS 11, iOS 14, tvOS 14, watchOS 7, *)
 extension PublicKey: CustomStringConvertible {
     var description: String {
         switch self.backing {
