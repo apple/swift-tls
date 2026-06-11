@@ -23,6 +23,7 @@ import CryptoKit
 
 #if canImport(Darwin) || SWIFTTLS_EXCLAVEKIT
 import os.log
+@available(macOS 11, iOS 14, tvOS 14, watchOS 7, *)
 private let logger = Logger(subsystem: "com.apple.security.swifttls", category: "HandshakeStateMachineConfiguration")
 #elseif SWIFTTLS_EMBEDDED || SWIFTTLS_DRIVERKIT
 private let logger = Logger(label: "com.apple.security.swifttls.HandshakeStateMachineConfiguration")
@@ -42,6 +43,7 @@ public enum SwiftTLSPrivateKey {
     case opaqueReference(SwiftTLSOpaqueReferenceKey)
 }
 
+@available(SwiftTLS 0.1.0, *)
 extension HandshakeStateMachine {
     enum AuthenticationMethod {
         case noAuthAvailable

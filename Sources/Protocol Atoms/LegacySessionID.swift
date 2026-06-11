@@ -14,6 +14,7 @@
 
 #if canImport(Darwin) || SWIFTTLS_EXCLAVEKIT
 import os.log
+@available(macOS 11, iOS 14, tvOS 14, watchOS 7, *)
 private let logger = Logger(subsystem: "com.apple.security.swifttls", category: "Handshake")
 #elseif SWIFTTLS_EMBEDDED || SWIFTTLS_DRIVERKIT
 private let logger = Logger(label: "com.apple.security.swifttls.Handshake")
@@ -23,6 +24,7 @@ import Logging
 private let logger = Logger(label: "com.apple.security.swifttls.Handshake")
 #endif
 
+@available(SwiftTLS 0.1.0, *)
 struct LegacySessionID {
     fileprivate var bytes: (UInt64, UInt64, UInt64, UInt64)
     fileprivate var length: Int
@@ -56,6 +58,7 @@ struct LegacySessionID {
     }
 }
 
+@available(SwiftTLS 0.1.0, *)
 extension LegacySessionID: Hashable {
     static func ==(lhs: LegacySessionID, rhs: LegacySessionID) -> Bool {
         // Right now this can just check every byte unconditionally because we zero-initialize the other bytes.
@@ -72,6 +75,7 @@ extension LegacySessionID: Hashable {
     }
 }
 
+@available(SwiftTLS 0.1.0, *)
 extension InputBuffer {
     mutating func readLegacySessionID() throws(TLSError) -> LegacySessionID? {
         return try self.readVariableLengthVector(lengthFieldType: UInt8.self) { buffer throws(TLSError) in
@@ -87,6 +91,7 @@ extension InputBuffer {
     }
 }
 
+@available(SwiftTLS 0.1.0, *)
 extension ByteBuffer {
     @discardableResult
     mutating func writeLegacySessionID(_ sessionID: LegacySessionID) -> Int {

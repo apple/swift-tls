@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+@available(SwiftTLS 0.1.0, *)
 struct ClientHello {
     var legacyVersion: ProtocolVersion
     var random: Random
@@ -42,6 +43,7 @@ struct ClientHello {
     }
 }
 
+@available(SwiftTLS 0.1.0, *)
 extension ClientHello {
     var serverCertificateTypes: [CertificateType] {
         for ext in self.extensions {
@@ -66,6 +68,7 @@ extension ClientHello {
     }
 }
 
+@available(SwiftTLS 0.1.0, *)
 extension ClientHello {
     var signatureAlgorithms: [UInt16] {
         for ext in self.extensions {
@@ -77,6 +80,7 @@ extension ClientHello {
     }
 }
 
+@available(SwiftTLS 0.1.0, *)
 extension ClientHello {
     var serverName: String? {
         for ext in self.extensions {
@@ -95,6 +99,7 @@ extension ClientHello {
     }
 }
 
+@available(SwiftTLS 0.1.0, *)
 extension ClientHello {
     var alpns: [String] {
         for ext in self.extensions {
@@ -111,8 +116,10 @@ extension ClientHello {
     }
 }
 
+@available(SwiftTLS 0.1.0, *)
 extension ClientHello: Hashable { }
 
+@available(SwiftTLS 0.1.0, *)
 extension ClientHello: HandshakeMessageProtocol {
     static var handshakeType: HandshakeType {
         .clientHello

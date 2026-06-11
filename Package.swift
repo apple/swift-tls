@@ -25,7 +25,8 @@ let versionNumbers = ["0.1.0"]
 
 // Availability Macro Utilities
 enum _OSAvailability: String {
-    case alwaysAvailable = "macOS 26, iOS 26, tvOS 26, watchOS 26, visionOS 26" // This should match the package's deployment target
+    // The OS versions in which `SwiftTLS 0.1.0` APIs first became available.
+    case alwaysAvailable = "macOS 26, iOS 26, tvOS 26, watchOS 26, visionOS 26"
     // Use 10000 for future availability to avoid compiler magic around the 9999 version number but ensure it is greater than 9999"
     case future = "macOS 10000, iOS 10000, tvOS 10000, watchOS 10000, visionOS 10000"
 }
@@ -75,9 +76,6 @@ targetDependencies = [
 
 let package = Package(
     name: "swift-tls",
-    platforms: [
-        .macOS("26.0"), .iOS("26.0"), .tvOS("26.0"), .watchOS("26.0"), .visionOS("26.0")
-    ],
     products: [
         // Products define the executables and libraries a package produces, making them visible to other packages.
         .library(
@@ -96,7 +94,7 @@ let package = Package(
         .testTarget(
             name: "SwiftTLSTests",
             dependencies: ["SwiftTLS"],
-            swiftSettings: settings
+            swiftSettings: availabilityMacros + (settings ?? [])
         ),
     ]
 )

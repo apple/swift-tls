@@ -21,6 +21,7 @@ import CryptoKit
 @preconcurrency import Crypto
 #endif
 
+@available(macOS 11, iOS 14, tvOS 14, watchOS 7, *)
 extension HKDF {
     static func expandLabel<SecretBytes: ContiguousBytes, ContextBytes: ContiguousBytes>(secret: SecretBytes, label: String, context: ContextBytes, length: Int) -> SymmetricKey {
         // We need to build HkdfLabel:

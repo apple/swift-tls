@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+@available(SwiftTLS 0.1.0, *)
 extension Extension {
     struct EarlyData {
         // Will be `nil` when used in ClientHello/EncryptedExtensions, will not be zero otherwise.
@@ -19,8 +20,10 @@ extension Extension {
     }
 }
 
+@available(SwiftTLS 0.1.0, *)
 extension Extension.EarlyData: Hashable { }
 
+@available(SwiftTLS 0.1.0, *)
 extension ByteBuffer {
     @discardableResult
     mutating func writeEarlyDataExtension(_ earlyData: Extension.EarlyData) -> Int {
@@ -32,6 +35,7 @@ extension ByteBuffer {
     }
 }
 
+@available(SwiftTLS 0.1.0, *)
 extension InputBuffer {
     mutating func readEarlyDataExtension(messageType: HandshakeType) throws(TLSError) -> Extension.EarlyData {
         switch messageType {

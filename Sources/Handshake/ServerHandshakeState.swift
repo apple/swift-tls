@@ -25,6 +25,7 @@ import CryptoKit
 
 #if canImport(Darwin) || SWIFTTLS_EXCLAVEKIT
 import os.log
+@available(macOS 11, iOS 14, tvOS 14, watchOS 7, *)
 private let logger = Logger(subsystem: "com.apple.security.swifttls", category: "ServerHandshakeState")
 #elseif SWIFTTLS_EMBEDDED || SWIFTTLS_DRIVERKIT
 private let logger = Logger(label: "com.apple.security.swifttls.ServerHandshakeState")
@@ -34,6 +35,7 @@ import Logging
 private let logger = Logger(label: "com.apple.security.swifttls.ServerHandshakeState")
 #endif
 
+@available(SwiftTLS 0.1.0, *)
 enum ServerHandshakeState {
     /// Ready, but the handshake has not yet started
     case idle(IdleState)
@@ -261,6 +263,7 @@ enum ServerHandshakeState {
     }
 }
 
+@available(SwiftTLS 0.1.0, *)
 extension ServerHandshakeState {
     struct IdleState {
         var configuration: ServerHandshakeStateMachine.Configuration
@@ -1575,6 +1578,7 @@ extension ServerHandshakeState {
     }
 }
 
+@available(SwiftTLS 0.1.0, *)
 extension ServerHandshakeState: CustomStringConvertible {
     var description: String {
         switch self {

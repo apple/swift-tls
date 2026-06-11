@@ -14,6 +14,7 @@
 
 #if canImport(Darwin) || SWIFTTLS_EXCLAVEKIT
 import os.log
+@available(macOS 11, iOS 14, tvOS 14, watchOS 7, *)
 private let logger = Logger(subsystem: "com.apple.security.swifttls", category: "HandshakeMessageParser")
 #elseif SWIFTTLS_EMBEDDED || SWIFTTLS_DRIVERKIT
 private let logger = Logger(label: "com.apple.security.swifttls.HandshakeMessageParser")
@@ -23,6 +24,7 @@ import Logging
 private let logger = Logger(label: "com.apple.security.swifttls.HandshakeMessageParser")
 #endif
 
+@available(SwiftTLS 0.1.0, *)
 struct HandshakeMessageParser {
     private var bufferedBytes: ByteBuffer?
     var readClientHello: Bool = false
@@ -182,6 +184,7 @@ struct HandshakeMessageParser {
     }
 }
 
+@available(SwiftTLS 0.1.0, *)
 extension HandshakeMessageParser {
     struct ParseResult {
         var messageBytes: ByteBuffer

@@ -23,6 +23,7 @@ import CryptoKit
 
 #if canImport(Darwin) || SWIFTTLS_EXCLAVEKIT
 import os.log
+@available(macOS 11, iOS 14, tvOS 14, watchOS 7, *)
 private let logger = Logger(subsystem: "com.apple.security.swifttls", category: "PeerCertificateBundle")
 #elseif SWIFTTLS_EMBEDDED || SWIFTTLS_DRIVERKIT
 private let logger = Logger(label: "com.apple.security.swifttls.PeerCertificateBundle")
@@ -37,6 +38,7 @@ private let logger = Logger(label: "com.apple.security.swifttls.PeerCertificateB
 ///
 /// Depending on negotiated extensions, the bundle holds either X.509 certificates or raw
 /// public keys; a single bundle uses exactly one of these representations.
+@available(SwiftTLS 0.1.0, *)
 struct PeerCertificateBundle {
     fileprivate var bundle: Bundle
 
@@ -201,6 +203,7 @@ struct PeerCertificateBundle {
     }
 }
 
+@available(SwiftTLS 0.1.0, *)
 extension PeerCertificateBundle {
     /// The kinds of certificate bundle this package supports.
     fileprivate enum Bundle {
@@ -209,6 +212,7 @@ extension PeerCertificateBundle {
     }
 }
 
+@available(SwiftTLS 0.1.0, *)
 extension PeerCertificateBundle {
     /// Whether this package supports unverified X.509.
     ///
@@ -250,8 +254,10 @@ extension PeerCertificateBundle {
     }()
 }
 
+@available(SwiftTLS 0.1.0, *)
 extension PeerCertificateBundle: Equatable { }
 
+@available(SwiftTLS 0.1.0, *)
 extension PeerCertificateBundle.Bundle: Equatable {
     static func ==(lhs: Self, rhs: Self) -> Bool {
         switch (lhs, rhs) {
@@ -265,6 +271,7 @@ extension PeerCertificateBundle.Bundle: Equatable {
     }
 }
 
+@available(SwiftTLS 0.1.0, *)
 extension ByteBuffer {
     mutating func writePeerCertificateBundle(_ bundle: PeerCertificateBundle) {
         switch bundle.bundle {
@@ -282,6 +289,7 @@ extension ByteBuffer {
     }
 }
 
+@available(SwiftTLS 0.1.0, *)
 extension InputBuffer {
     mutating func readPeerCertificateBundle() throws(TLSError) -> PeerCertificateBundle? {
         guard let discriminator = self.readInteger(as: UInt8.self) else {

@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+@available(SwiftTLS 0.1.0, *)
 struct NewSessionTicket {
     var ticketLifetime: UInt32
     var ticketAgeAdd: UInt32
@@ -32,8 +33,10 @@ struct NewSessionTicket {
     }
 }
 
+@available(SwiftTLS 0.1.0, *)
 extension NewSessionTicket: Hashable { }
 
+@available(SwiftTLS 0.1.0, *)
 extension NewSessionTicket: HandshakeMessageProtocol {
     static var handshakeType: HandshakeType {
         .newSessionTicket

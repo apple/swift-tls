@@ -67,12 +67,14 @@ extension HandshakeType: CustomStringConvertible {
     }
 }
 
+@available(SwiftTLS 0.1.0, *)
 extension InputBuffer {
     mutating func readHandshakeType() -> HandshakeType? {
         return self.readInteger().map { HandshakeType(rawValue: $0) }
     }
 }
 
+@available(SwiftTLS 0.1.0, *)
 extension ByteBuffer {
     @discardableResult
     mutating func writeHandshakeType(_ type: HandshakeType) -> Int {

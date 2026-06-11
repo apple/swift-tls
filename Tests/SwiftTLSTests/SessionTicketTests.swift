@@ -26,6 +26,7 @@ import CryptoKit
 #endif
 
 
+@available(SwiftTLS 0.1.0, *)
 final class SessionTicketTests: XCTestCase {
     // A helper function that lets us tweak one parameter at a time.
     private static func baselineNewSessionTicket(ticketLifetime: UInt32 = .max,
