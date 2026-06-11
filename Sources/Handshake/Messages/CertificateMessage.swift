@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 struct CertificateMessage {
     var certificateRequestContext: ByteBuffer
 
@@ -24,10 +24,10 @@ struct CertificateMessage {
     }
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension CertificateMessage: Hashable { }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension CertificateMessage {
     struct CertificateEntry {
         var opaqueCertificateData: ByteBuffer
@@ -42,10 +42,10 @@ extension CertificateMessage {
     }
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension CertificateMessage.CertificateEntry: Hashable { }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension CertificateMessage: HandshakeMessageProtocol {
     static var handshakeType: HandshakeType {
         .certificate
@@ -86,7 +86,7 @@ extension CertificateMessage: HandshakeMessageProtocol {
     }
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension InputBuffer {
     mutating func readCertificateEntry() throws(TLSError) -> CertificateMessage.CertificateEntry? {
         guard let certificateData = try self.readVariableLengthVectorUInt24({ buffer in
@@ -103,7 +103,7 @@ extension InputBuffer {
     }
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension ByteBuffer {
     @discardableResult
     mutating func writeCertificateEntry(_ entry: CertificateMessage.CertificateEntry) -> Int {

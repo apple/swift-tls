@@ -63,14 +63,14 @@ extension NamedGroup: CustomStringConvertible {
 
 
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension InputBuffer {
     mutating func readNamedGroup() -> NamedGroup? {
         return self.readInteger().map { NamedGroup(rawValue: $0) }
     }
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension ByteBuffer {
     @discardableResult
     mutating func writeNamedGroup(_ namedGroup: NamedGroup) -> Int {

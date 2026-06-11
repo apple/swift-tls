@@ -18,7 +18,7 @@ import XCTest
 @testable import SwiftTLS
 #endif
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 class InputBufferTests: XCTestCase {
     // MARK: - Basic properties
 

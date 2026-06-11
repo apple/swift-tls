@@ -20,7 +20,7 @@ struct ExtensionType: RawRepresentable, Sendable {
     }
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension ExtensionType {
     static let serverName = ExtensionType(rawValue: 0)
 
@@ -49,10 +49,10 @@ extension ExtensionType {
     static let ticketRequest = ExtensionType(rawValue: 58)
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension ExtensionType: Hashable { }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension ExtensionType: CustomStringConvertible {
     var description: String {
         switch self {
@@ -88,14 +88,14 @@ extension ExtensionType: CustomStringConvertible {
     }
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension InputBuffer {
     mutating func readExtensionType() -> ExtensionType? {
         return self.readInteger().map { ExtensionType(rawValue: $0) }
     }
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension ByteBuffer {
     @discardableResult
     mutating func writeExtensionType(_ type: ExtensionType) -> Int {

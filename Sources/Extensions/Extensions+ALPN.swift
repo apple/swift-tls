@@ -16,7 +16,7 @@
 import Foundation
 #endif
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension Extension {
     enum ApplicationLayerProtocolNegotiation {
         case offer([String])
@@ -24,10 +24,10 @@ extension Extension {
     }
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension Extension.ApplicationLayerProtocolNegotiation: Hashable { }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension ByteBuffer {
     @discardableResult
     mutating func writeALPN(_ alpn: Extension.ApplicationLayerProtocolNegotiation) -> Int {
@@ -47,7 +47,7 @@ extension ByteBuffer {
     }
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension InputBuffer {
     mutating func readALPN(messageType: HandshakeType) throws(TLSError) -> Extension.ApplicationLayerProtocolNegotiation {
         switch messageType {

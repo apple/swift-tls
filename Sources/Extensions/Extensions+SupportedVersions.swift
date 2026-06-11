@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension Extension {
     enum SupportedVersions {
         case offer([ProtocolVersion])
@@ -20,10 +20,10 @@ extension Extension {
     }
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension Extension.SupportedVersions: Hashable { }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension InputBuffer {
     mutating func readSupportedVersions(messageType: HandshakeType) throws(TLSError) -> Extension.SupportedVersions {
         switch messageType {
@@ -57,7 +57,7 @@ extension InputBuffer {
     }
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension ByteBuffer {
     @discardableResult
     mutating func writeSupportedVersions(_ versions: Extension.SupportedVersions) -> Int {

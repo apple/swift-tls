@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 struct EncryptedExtensions {
     // TODO: enforcement on this value, only allow well-formed EncryptedExtensions.
     var extensions: Array<Extension>
@@ -22,10 +22,10 @@ struct EncryptedExtensions {
     }
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension EncryptedExtensions: Hashable { }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension EncryptedExtensions: HandshakeMessageProtocol {
     static var handshakeType: HandshakeType {
         .encryptedExtensions

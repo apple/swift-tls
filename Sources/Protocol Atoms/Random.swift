@@ -49,14 +49,14 @@ extension Random: Hashable {
     }
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension InputBuffer {
     mutating func readRandom() -> Random? {
         self.read(as: Random.self)
     }
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension ByteBuffer {
     @discardableResult
     mutating func writeRandom(_ random: Random) -> Int {

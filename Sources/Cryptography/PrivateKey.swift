@@ -24,7 +24,7 @@ import CryptoKit
 /// A generic wrapper over the supported private-key types.
 ///
 /// Loosely based on the implementation in Swift Certificates.
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 struct PrivateKey {
     var backing: BackingPrivateKey
 
@@ -94,10 +94,10 @@ struct PrivateKey {
     }
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension PrivateKey: Hashable {}
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension PrivateKey: CustomStringConvertible {
     var description: String {
         switch self.backing {
@@ -115,13 +115,13 @@ extension PrivateKey: CustomStringConvertible {
 
 
 @_spi(SwiftTLSOptions)
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 public typealias SwiftTLSSignatureScheme = UInt16
 
 /// A callback that accepts the bytes to sign and the negotiated TLS signature scheme,
 /// and returns the signature, or `nil` when signing fails.
 @_spi(SwiftTLSOptions)
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 public typealias SwiftTLSRefKeySignCallback = (Data, SwiftTLSSignatureScheme) -> Data?
 
 /// The underlying key types supported by `SwiftTLSOpaqueReferenceKey`.
@@ -132,7 +132,7 @@ enum SwiftTLSOpaqueReferenceKeyType: Sendable {
 /// A generic private-key type that lets a caller produce signatures over data using any key
 /// the caller can access.
 @_spi(SwiftTLSOptions)
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 public struct SwiftTLSOpaqueReferenceKey {
     let publicKey: PublicKey
     let sign: SwiftTLSRefKeySignCallback
@@ -167,7 +167,7 @@ public struct SwiftTLSOpaqueReferenceKey {
     }
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension PrivateKey {
     enum BackingPrivateKey: Hashable {
         case p256(P256.Signing.PrivateKey)

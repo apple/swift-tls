@@ -43,14 +43,14 @@ extension CipherSuite: CustomStringConvertible {
     }
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension InputBuffer {
     mutating func readCipherSuite() -> CipherSuite? {
         return self.readInteger().map { CipherSuite(rawValue: $0) }
     }
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension ByteBuffer {
     @discardableResult
     mutating func writeCipherSuite(_ cipherSuite: CipherSuite) -> Int {

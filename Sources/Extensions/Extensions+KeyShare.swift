@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension Extension {
     enum KeyShare {
         case clientHello([KeyShareEntry])
@@ -21,10 +21,10 @@ extension Extension {
     }
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension Extension.KeyShare: Hashable { }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension Extension.KeyShare {
     struct KeyShareEntry {
         var group: NamedGroup
@@ -37,17 +37,17 @@ extension Extension.KeyShare {
     }
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension Extension.KeyShare.KeyShareEntry: Hashable { }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension Extension.KeyShare.KeyShareEntry: CustomStringConvertible {
     var description: String {
         "KeyShareEntry(group: \(self.group), keyExchange: \(self.keyExchange.readableBytes) bytes)"
     }
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension ByteBuffer {
     @discardableResult
     mutating func writeKeyShare(_ versions: Extension.KeyShare) -> Int {
@@ -76,7 +76,7 @@ extension ByteBuffer {
     }
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension InputBuffer {
     mutating func readKeyShareEntry() -> Extension.KeyShare.KeyShareEntry? {
         guard let group = self.readNamedGroup() else {

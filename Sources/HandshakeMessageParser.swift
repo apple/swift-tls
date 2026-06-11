@@ -24,7 +24,7 @@ import Logging
 private let logger = Logger(label: "com.apple.security.swifttls.HandshakeMessageParser")
 #endif
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 struct HandshakeMessageParser {
     private var bufferedBytes: ByteBuffer?
     var readClientHello: Bool = false
@@ -184,7 +184,7 @@ struct HandshakeMessageParser {
     }
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension HandshakeMessageParser {
     struct ParseResult {
         var messageBytes: ByteBuffer

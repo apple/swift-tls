@@ -34,7 +34,7 @@ private let logger = Logger(label: "com.apple.security.swifttls.SessionKeyManage
 
 // Wrapper around SessionKeyManager that only exposes functions a client should
 // need to call to help avoid invalid transitions.
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 struct ClientSessionKeyManager<HF: HashFunction> {
     private var sessionKeyManager: SessionKeyManager<HF>
 
@@ -135,7 +135,7 @@ struct ClientSessionKeyManager<HF: HashFunction> {
 
 // Wrapper around SessionKeyManager that only exposes functions a server should
 // need to call to help avoid invalid transitions.
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 struct ServerSessionKeyManager<HF: HashFunction> {
     private var sessionKeyManager: SessionKeyManager<HF>
 
@@ -220,7 +220,7 @@ struct ServerSessionKeyManager<HF: HashFunction> {
 /// The TLS 1.3 key schedule builds out a ratchet of keys and secrets for various purposes.
 /// This object encapsulates the current state in the key schedule and provides access to the
 /// various secrets for the rest of the code to use.
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 fileprivate struct SessionKeyManager<HF: HashFunction> {
 
     /// The running state of the key manager.
@@ -523,7 +523,7 @@ fileprivate struct SessionKeyManager<HF: HashFunction> {
     }
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension SessionKeyManager {
     fileprivate enum State {
         /// The dialogue has not yet begun; no keying material is available.
@@ -561,7 +561,7 @@ extension SessionKeyManager {
     }
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension SessionKeyManager.State {
     fileprivate struct EarlySecret {
         /// The current state of the transcript hash.

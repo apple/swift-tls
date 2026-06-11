@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension Extension {
     enum TicketRequest {
         case clientHello(ClientTicketRequest)
@@ -20,7 +20,7 @@ extension Extension {
     }
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension Extension.TicketRequest: Hashable { }
 
 struct ClientTicketRequest: Hashable, CustomStringConvertible {
@@ -37,7 +37,7 @@ struct ClientTicketRequest: Hashable, CustomStringConvertible {
     }
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension Extension.TicketRequest {
     struct ServerTicketRequestHint {
         var expectedCount: UInt8
@@ -48,17 +48,17 @@ extension Extension.TicketRequest {
     }
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension Extension.TicketRequest.ServerTicketRequestHint: Hashable { }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension Extension.TicketRequest.ServerTicketRequestHint: CustomStringConvertible {
     var description: String {
         return "TicketRequest(newSessionCount: \(self.expectedCount))"
     }
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension InputBuffer {
     mutating func readTicketRequestExtension(messageType: HandshakeType) throws(TLSError) -> Extension.TicketRequest {
         switch messageType {
@@ -79,7 +79,7 @@ extension InputBuffer {
     }
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension ByteBuffer {
     @discardableResult
     mutating func writeTicketRequestExtension(_ ticketRequest: Extension.TicketRequest) -> Int {

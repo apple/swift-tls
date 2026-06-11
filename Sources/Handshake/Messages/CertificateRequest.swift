@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 struct CertificateRequest {
     var certificateRequestContext: ByteBuffer
 
@@ -24,10 +24,10 @@ struct CertificateRequest {
     }
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension CertificateRequest: Hashable { }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension CertificateRequest: HandshakeMessageProtocol {
     static var handshakeType: HandshakeType {
         .certificateRequest

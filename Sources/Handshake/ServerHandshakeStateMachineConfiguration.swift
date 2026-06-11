@@ -36,7 +36,7 @@ import Logging
 private let logger = Logger(label: "com.apple.security.swifttls.ServerHandshakeStateMachineConfiguration")
 #endif
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension ServerHandshakeStateMachine {
     enum AuthenticationMethod {
         case noAuthAvailable

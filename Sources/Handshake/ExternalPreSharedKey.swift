@@ -21,7 +21,7 @@ import CryptoKit
 @preconcurrency import Crypto
 #endif
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 struct EPSK {
     let externalIdentity: ByteBuffer
     let epsk: SymmetricKey
@@ -61,7 +61,7 @@ struct EPSK {
     }
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 struct TLSKDFIdentifier: Sendable {
     public let rawValue: UInt16
     public let outputLength: Int
@@ -83,28 +83,28 @@ struct TLSKDFIdentifier: Sendable {
     }
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension TLSKDFIdentifier: Hashable { }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension TLSKDFIdentifier {
     static let HKDF_SHA256 = TLSKDFIdentifier(rawValue: 0x0001, outputLength: 32)
     static let HKDF_SHA384 = TLSKDFIdentifier(rawValue: 0x0002, outputLength: 48)
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 protocol PSKProtocol {
     var identity: ByteBuffer { get }
     var key: SymmetricKey { get }
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 enum PSK: Equatable {
     case imported(ImportedPSK)
     case rawEPSK(RawEPSK)
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 struct GeneralEPSK: Equatable, PSKProtocol {
     let innerPSK: PSK
 
@@ -153,7 +153,7 @@ struct GeneralEPSK: Equatable, PSKProtocol {
     }
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 struct ImportedPSK: Equatable, PSKProtocol {
     let importedIdentity: ImportedIdentity
     let ipskx: SymmetricKey
@@ -162,14 +162,14 @@ struct ImportedPSK: Equatable, PSKProtocol {
     var key: SymmetricKey { ipskx }
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 struct RawEPSK: Equatable, PSKProtocol {
     let identity: ByteBuffer
     let epsk: SymmetricKey
     var key: SymmetricKey { epsk }
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 struct ImportedIdentity: Hashable {
     let externalIdentity: ByteBuffer
     let context: ByteBuffer?
@@ -226,7 +226,7 @@ struct ImportedIdentity: Hashable {
     }
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension ByteBuffer {
     mutating func writeUInt16LengthPrefixedImmutableBuffer(_ byteBuffer: ByteBuffer) {
         self.writeInteger(UInt16(byteBuffer.readableBytes))

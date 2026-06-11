@@ -45,14 +45,14 @@ extension SignatureScheme: CustomStringConvertible {
     }
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension InputBuffer {
     mutating func readSignatureScheme() -> SignatureScheme? {
         return self.readInteger().map { SignatureScheme(rawValue: $0) }
     }
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension ByteBuffer {
     @discardableResult
     mutating func writeSignatureScheme(_ type: SignatureScheme) -> Int {

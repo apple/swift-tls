@@ -23,7 +23,7 @@ import CryptoKit
 #endif
 
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 class ExtensionParsingTests: XCTestCase {
     /// Handy-dandy temporary key
     let key = P384.KeyAgreement.PrivateKey()
@@ -1247,7 +1247,7 @@ class ExtensionParsingTests: XCTestCase {
     }
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension ByteBuffer {
     mutating func readExtension(messageType: HandshakeType, helloRetryRequest: Bool) throws(TLSError) -> Extension? {
         try withInputBuffer { inputBuffer throws(TLSError) in

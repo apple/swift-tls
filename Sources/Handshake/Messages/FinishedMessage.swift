@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 struct FinishedMessage {
     var verifyData: ByteBuffer
 
@@ -21,10 +21,10 @@ struct FinishedMessage {
     }
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension FinishedMessage: Hashable { }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension FinishedMessage: HandshakeMessageProtocol {
     static var handshakeType: HandshakeType {
         .finished

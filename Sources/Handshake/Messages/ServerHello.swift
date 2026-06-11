@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 struct ServerHello {
     var legacyVersion: ProtocolVersion
     var random: Random
@@ -22,7 +22,7 @@ struct ServerHello {
     var extensions: Array<Extension>
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension ServerHello {
     var isHelloRetryRequest: Bool {
         return self.random == .helloRetryRequest
@@ -39,10 +39,10 @@ extension ServerHello {
     }
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension ServerHello: Hashable { }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension ServerHello: HandshakeMessageProtocol {
     static var handshakeType: HandshakeType {
         .serverHello

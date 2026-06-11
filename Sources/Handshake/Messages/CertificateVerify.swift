@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 struct CertificateVerify {
     var algorithm: SignatureScheme
 
@@ -24,10 +24,10 @@ struct CertificateVerify {
     }
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension CertificateVerify: Hashable { }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension CertificateVerify: HandshakeMessageProtocol {
     static var handshakeType: HandshakeType {
         .certificateVerify

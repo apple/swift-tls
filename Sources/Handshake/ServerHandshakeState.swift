@@ -35,7 +35,7 @@ import Logging
 private let logger = Logger(label: "com.apple.security.swifttls.ServerHandshakeState")
 #endif
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 enum ServerHandshakeState {
     /// Ready, but the handshake has not yet started
     case idle(IdleState)
@@ -263,7 +263,7 @@ enum ServerHandshakeState {
     }
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension ServerHandshakeState {
     struct IdleState {
         var configuration: ServerHandshakeStateMachine.Configuration
@@ -1578,7 +1578,7 @@ extension ServerHandshakeState {
     }
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension ServerHandshakeState: CustomStringConvertible {
     var description: String {
         switch self {

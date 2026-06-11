@@ -48,7 +48,7 @@ enum ErrorLocation {
     case readClientFinished
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 class ServerHandshakeStateMachineTests: XCTestCase {
     override func setUp() {
         continueAfterFailure = false

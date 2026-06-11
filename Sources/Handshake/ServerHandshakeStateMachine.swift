@@ -36,7 +36,7 @@ import Logging
 private let logger = Logger(label: "com.apple.security.swifttls.ServerHandshakeStateMachine")
 #endif
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 struct SwiftOfferedEPSK {
     let external_identity: Data
     let context: Data?
@@ -46,12 +46,12 @@ struct SwiftOfferedEPSK {
     }
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 typealias externalPSKCompletionCallback = (Int, EPSK?) -> Void
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 typealias externalPSKSelectionCallback = ([SwiftOfferedEPSK], @escaping externalPSKCompletionCallback) -> Void
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 struct ServerHandshakeStateMachine {
     private var parser = HandshakeMessageParser()
     private var serializer = TLSMessageSerializer()
@@ -474,7 +474,7 @@ struct ServerHandshakeStateMachine {
 
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension ServerHandshakeStateMachine {
     private mutating func handleReadClientHello(incomingBytes: inout InputBuffer) throws(TLSError) -> StepResult {
         logger.debug("server expecting client hello")
@@ -896,7 +896,7 @@ extension ServerHandshakeStateMachine {
     }
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension ServerHandshakeStateMachine {
     fileprivate enum StepResult {
         case partialResult(PartialHandshakeResult)

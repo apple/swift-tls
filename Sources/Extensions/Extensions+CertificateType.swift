@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension Extension {
     enum CertificateTypeExt {
         case offer([CertificateType])
@@ -20,10 +20,10 @@ extension Extension {
     }
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension Extension.CertificateTypeExt: Hashable { }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension ByteBuffer {
     @discardableResult
     mutating func writeCertificateType(_ certificateType: Extension.CertificateTypeExt) -> Int {
@@ -41,7 +41,7 @@ extension ByteBuffer {
     }
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension InputBuffer {
     mutating func readCertificateType(messageType: HandshakeType) throws(TLSError) -> Extension.CertificateTypeExt {
         switch messageType {

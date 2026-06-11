@@ -16,7 +16,7 @@
 import Foundation
 #endif
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension Data {
     /// Creates a `Data` instance by copying the raw bytes from the given span.
     init(copying bytes: RawSpan) {

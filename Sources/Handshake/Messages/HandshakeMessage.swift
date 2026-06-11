@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 enum HandshakeMessage: Hashable {
     case clientHello(ClientHello)
     case serverHello(ServerHello)

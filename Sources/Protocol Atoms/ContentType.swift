@@ -49,14 +49,14 @@ extension ContentType: CustomStringConvertible {
     }
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension InputBuffer {
     mutating func readContentType() -> ContentType? {
         return self.readInteger().map { ContentType(rawValue: $0) }
     }
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension ByteBuffer {
     @discardableResult
     mutating func writeContentType(_ type: ContentType) -> Int {

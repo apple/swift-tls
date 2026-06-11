@@ -16,42 +16,13 @@
 
 import PackageDescription
 
-// Availability Macros
-
-let availabilityTags: [_Availability] = [
-    _Availability("SwiftTLS"),
-]
-let versionNumbers = ["0.1.0"]
-
-// Availability Macro Utilities
-enum _OSAvailability: String {
-    // The OS versions in which `SwiftTLS 0.1.0` APIs first became available.
-    case alwaysAvailable = "macOS 26, iOS 26, tvOS 26, watchOS 26, visionOS 26"
-    // Use 10000 for future availability to avoid compiler magic around the 9999 version number but ensure it is greater than 9999"
-    case future = "macOS 10000, iOS 10000, tvOS 10000, watchOS 10000, visionOS 10000"
-}
-
-struct _Availability {
-    let name: String
-    let osAvailability: _OSAvailability
-
-    init(_ name: String, osAvailability: _OSAvailability = .alwaysAvailable) {
-        self.name = name
-        self.osAvailability = osAvailability
-    }
-}
-let availabilityMacros: [SwiftSetting] = versionNumbers.flatMap { version in
-    availabilityTags.map {
-        .enableExperimentalFeature("AvailabilityMacro=\($0.name) \(version):\($0.osAvailability.rawValue)")
-    }
-}
-
 var packageDependencies = [PackageDescription.Package.Dependency]()
 var targetDependencies = [PackageDescription.Target.Dependency]()
 
-var settings: [SwiftSetting]? = [
+var settings: [SwiftSetting] = [
     // Add build settings here
     .enableExperimentalFeature("Lifetimes"),
+    .enableExperimentalFeature("AnyAppleOSAvailability"),
 ]
 
 #if os(Linux)
@@ -89,12 +60,12 @@ let package = Package(
         .target(
             name: "SwiftTLS",
             dependencies: targetDependencies,
-            swiftSettings: availabilityMacros + (settings ?? [])
+            swiftSettings: settings
         ),
         .testTarget(
             name: "SwiftTLSTests",
             dependencies: ["SwiftTLS"],
-            swiftSettings: availabilityMacros + (settings ?? [])
+            swiftSettings: settings
         ),
     ]
 )

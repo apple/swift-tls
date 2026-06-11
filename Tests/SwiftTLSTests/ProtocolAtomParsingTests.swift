@@ -18,7 +18,7 @@ import XCTest
 #endif
 
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 class ProtocolAtomParsingTests: XCTestCase {
     var buffer: ByteBuffer!
 

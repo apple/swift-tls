@@ -22,7 +22,7 @@ import CryptoKit
 @testable import SwiftTLS
 #endif
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 class ExternalPreSharedKeyTests: XCTestCase {
     func testPSKImporterInterface() throws {
         let externalIdentity = ByteBuffer("test psk identity")

@@ -51,14 +51,14 @@ extension ProtocolVersion: CustomStringConvertible {
     }
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension InputBuffer {
     mutating func readProtocolVersion() -> ProtocolVersion? {
         return self.readInteger(as: UInt16.self).map { ProtocolVersion(major: UInt8(truncatingIfNeeded: $0 >> 8) , minor: UInt8(truncatingIfNeeded: $0)) }
     }
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension ByteBuffer {
     @discardableResult
     mutating func writeProtocolVersion(_ protocolVersion: ProtocolVersion) -> Int {

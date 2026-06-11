@@ -34,7 +34,7 @@ private let logger = Logger(label: "com.apple.security.swifttls.HandshakeStateMa
 #endif
 
 @_spi(SwiftTLSOptions)
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 public enum SwiftTLSPrivateKey {
     case p256(P256.Signing.PrivateKey)
 #if !SWIFTTLS_EMBEDDED && canImport(Darwin)
@@ -43,7 +43,7 @@ public enum SwiftTLSPrivateKey {
     case opaqueReference(SwiftTLSOpaqueReferenceKey)
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension HandshakeStateMachine {
     enum AuthenticationMethod {
         case noAuthAvailable

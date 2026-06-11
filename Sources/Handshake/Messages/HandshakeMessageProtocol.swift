@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 /// A protocol adopted by all handshake messages.
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 protocol HandshakeMessageProtocol {
     static var handshakeType: HandshakeType { get }
 
@@ -23,7 +23,7 @@ protocol HandshakeMessageProtocol {
     init(bytes: inout InputBuffer) throws(TLSError)
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension ByteBuffer {
     @discardableResult
     mutating func writeHandshakeMessage<Message: HandshakeMessageProtocol>(_ message: Message) -> Int {

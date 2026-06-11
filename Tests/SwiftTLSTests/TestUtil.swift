@@ -25,7 +25,7 @@ import CryptoKit
 import Foundation
 #endif
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 var goodClientHello: ClientHello {
   let ephemeralKey = P384EphemeralKey()
   return ClientHello(
@@ -51,7 +51,7 @@ var goodClientHello: ClientHello {
   )
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 class TestConfigurationGenerator {
     let serverSigningKey = P256.Signing.PrivateKey()
     let clientSigningKey =  P256.Signing.PrivateKey()

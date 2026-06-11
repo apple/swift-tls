@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 enum Extension {
     case serverName(ServerName)
     case supportedGroups(SupportedGroups)
@@ -63,10 +63,10 @@ enum Extension {
     }
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension Extension: Hashable { }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension InputBuffer {
     mutating func readExtension(messageType: HandshakeType, helloRetryRequest: Bool) throws(TLSError) -> Extension? {
         guard let type = self.readExtensionType() else {
@@ -121,7 +121,7 @@ extension InputBuffer {
     }
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension ByteBuffer {
     @discardableResult
     mutating func writeExtension(_ ext: Extension) -> Int {

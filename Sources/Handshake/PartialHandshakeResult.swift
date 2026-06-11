@@ -21,7 +21,7 @@ import CryptoKit
 @preconcurrency import Crypto
 #endif
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 struct PartialHandshakeResult {
     var handshakeBytesToSend: ByteBuffer?
 

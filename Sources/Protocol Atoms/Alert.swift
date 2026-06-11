@@ -155,7 +155,7 @@ extension Alert: CustomStringConvertible {
     }
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension InputBuffer {
     mutating func readAlert() -> Alert? {
         let level = self.readInteger(as: UInt8.self)
@@ -167,7 +167,7 @@ extension InputBuffer {
     }
 }
 
-@available(SwiftTLS 0.1.0, *)
+@available(anyAppleOS 26, *)
 extension ByteBuffer {
     @discardableResult
     mutating func writeAlert(_ alert: Alert) -> Int {
