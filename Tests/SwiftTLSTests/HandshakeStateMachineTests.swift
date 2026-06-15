@@ -23,6 +23,7 @@ import CryptoKit
 #endif
 
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 class HandshakeStateMachineTests: XCTestCase {
 
@@ -2158,6 +2159,7 @@ class HandshakeStateMachineTests: XCTestCase {
     }
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension ClientHello {
 
@@ -2242,6 +2244,7 @@ extension ClientHello {
     }
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension Optional where Wrapped == PartialHandshakeResult {
     enum EncryptionLevelType {
@@ -2297,6 +2300,7 @@ func assertNewEncryptionLevel(_ level: EncryptionLevelType, _ readOrWrite: ReadO
     }
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension PartialHandshakeResult {
     func assertNewEncryptionLevel(_ level: Optional<PartialHandshakeResult>.EncryptionLevelType, _ readOrWrite: Optional<PartialHandshakeResult>.ReadOrWrite, file: StaticString = #filePath, line: UInt = #line) {

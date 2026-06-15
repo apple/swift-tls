@@ -28,6 +28,7 @@ extension Data {
 ///
 /// This is not a truly hardened version of NIO's ByteBuffer. It lacks some flexibility, but it's
 /// good enough for what we need.
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 struct ByteBuffer {
     private var backingData: Data
@@ -218,6 +219,7 @@ struct ByteBuffer {
     }
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension ByteBuffer {
     @discardableResult
@@ -283,6 +285,7 @@ extension ByteBuffer {
     }
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension ByteBuffer: Hashable {
     static func ==(lhs: ByteBuffer, rhs: ByteBuffer) -> Bool {
@@ -294,6 +297,7 @@ extension ByteBuffer: Hashable {
     }
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension ByteBuffer {
     /// Execute the given `body` function with an input buffer that can access

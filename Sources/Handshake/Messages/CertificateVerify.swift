@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 struct CertificateVerify {
     var algorithm: SignatureScheme
@@ -24,9 +25,11 @@ struct CertificateVerify {
     }
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension CertificateVerify: Hashable { }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension CertificateVerify: HandshakeMessageProtocol {
     static var handshakeType: HandshakeType {

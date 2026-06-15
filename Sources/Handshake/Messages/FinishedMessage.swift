@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 struct FinishedMessage {
     var verifyData: ByteBuffer
@@ -21,9 +22,11 @@ struct FinishedMessage {
     }
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension FinishedMessage: Hashable { }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension FinishedMessage: HandshakeMessageProtocol {
     static var handshakeType: HandshakeType {

@@ -23,6 +23,7 @@ import CryptoKit
 
 #if canImport(Darwin) || SWIFTTLS_EXCLAVEKIT
 import os.log
+// Availability due to `os.log`'s `Logger`
 @available(macOS 11, iOS 14, tvOS 14, watchOS 7, *)
 private let logger = Logger(subsystem: "com.apple.security.swifttls", category: "HandshakeStateMachine")
 #elseif SWIFTTLS_EMBEDDED || SWIFTTLS_DRIVERKIT
@@ -33,6 +34,7 @@ import Logging
 private let logger = Logger(label: "com.apple.security.swifttls.HandshakeStateMachine")
 #endif
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 struct HandshakeStateMachine {
     private var parser = HandshakeMessageParser()
@@ -609,6 +611,7 @@ struct HandshakeStateMachine {
 }
 
 // MARK: - Parsing
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension HandshakeStateMachine {
     private mutating func handleReadServerHello(incomingBytes: inout InputBuffer) throws(TLSError) -> ProcessStep<PartialHandshakeResult> {
@@ -806,6 +809,7 @@ extension HandshakeStateMachine {
     }
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension HandshakeStateMachine {
     /// This is `Optional<T>` with clearer names.
@@ -823,6 +827,7 @@ extension Collection where Element: Equatable {
     }
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 enum TLSHandshakeStateMachine {
     case client(HandshakeStateMachine)
@@ -831,6 +836,7 @@ enum TLSHandshakeStateMachine {
 #endif
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension TLSHandshakeStateMachine {
     var isServer : Bool {

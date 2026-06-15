@@ -43,6 +43,7 @@ extension CipherSuite: CustomStringConvertible {
     }
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension InputBuffer {
     mutating func readCipherSuite() -> CipherSuite? {
@@ -50,6 +51,7 @@ extension InputBuffer {
     }
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension ByteBuffer {
     @discardableResult

@@ -19,6 +19,7 @@
 /// a client, such as incoming network data. It is non-copyable to ensure that
 /// it is always clear which code is actively reading the data, preventing
 /// mistakes where the same data is processed multiple times unnecessarily.
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 struct InputBuffer: ~Escapable, ~Copyable {
     /// Reference to the underlying storage that we're reading from.
@@ -46,6 +47,7 @@ struct InputBuffer: ~Escapable, ~Copyable {
 }
 
 // MARK: Reading
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension InputBuffer {
     /// Reads the given number of bytes from the input buffer.
@@ -214,6 +216,7 @@ extension InputBuffer {
 }
 
 // MARK: Tentative reading
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension InputBuffer {
     /// Execute the given body to allow it to read from this split
@@ -240,6 +243,7 @@ extension InputBuffer {
 }
 
 // MARK: Seeking
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension InputBuffer {
     /// Seek to a specific position.
@@ -250,6 +254,7 @@ extension InputBuffer {
 }
 
 // MARK: Copying out data
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension InputBuffer {
     /// Copies the bytes from the buffer into the given raw output span.

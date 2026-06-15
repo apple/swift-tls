@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 struct NewSessionTicket {
     var ticketLifetime: UInt32
@@ -33,9 +34,11 @@ struct NewSessionTicket {
     }
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension NewSessionTicket: Hashable { }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension NewSessionTicket: HandshakeMessageProtocol {
     static var handshakeType: HandshakeType {

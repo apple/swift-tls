@@ -18,7 +18,6 @@ import Foundation
 
 // Result type for async computations applied to the handshaker.
 @_spi(SwiftTLSProtocol)
-@available(SwiftTLS 0.1.0, *)
 public struct PendingAsyncResult: Sendable {
     enum AsyncResult {
         case certificate(CertificateResult)
@@ -43,7 +42,6 @@ public struct PendingAsyncResult: Sendable {
 
 // List of opaque certificate data.
 @_spi(SwiftTLSProtocol)
-@available(SwiftTLS 0.1.0, *)
 public struct CertificateList: Sendable, Hashable {
     public var type: CertificateType
     public var entries: [Data]
@@ -56,13 +54,14 @@ public struct CertificateList: Sendable, Hashable {
 
 // Information offered by the client during the handshake.
 @_spi(SwiftTLSProtocol)
-@available(SwiftTLS 0.1.0, *)
 public struct PeerOffer: Sendable, Hashable {
     public var certificateTypes: [CertificateType]
     public var signatureAlgorithms: [UInt16]
     public var serverName: String?
     public var alpns: [String]?
 
+    // Availability due to `RawSpan`
+    @available(SwiftTLS 0.1.0, *)
     init(clientHello: ClientHello) {
         self.certificateTypes = clientHello.serverCertificateTypes
         self.signatureAlgorithms = clientHello.signatureAlgorithms
@@ -74,7 +73,6 @@ public struct PeerOffer: Sendable, Hashable {
 // The result waiting indicates asynchronous work in the callback.
 // The reason given for an unavailable certificate will be logged.
 @_spi(SwiftTLSProtocol)
-@available(SwiftTLS 0.1.0, *)
 public enum CertificateResult: Sendable, Hashable {
     case available(CertificateList)
     case unavailable(reason: String)
@@ -83,7 +81,6 @@ public enum CertificateResult: Sendable, Hashable {
 
 // Information passed into the callback.
 @_spi(SwiftTLSProtocol)
-@available(SwiftTLS 0.1.0, *)
 public struct CertificateInfo: Sendable {
     public var peerOffer: PeerOffer
     public var deliverResult: (@Sendable (CertificateResult) -> Void)?
@@ -99,13 +96,11 @@ public struct CertificateInfo: Sendable {
 // Note: This callback must either return a result directly (available, unavailable)
 //  or return waiting and call `deliverResult` with the pending result.
 @_spi(SwiftTLSProtocol)
-@available(SwiftTLS 0.1.0, *)
 public typealias CertificateCallback = @Sendable (CertificateInfo) -> CertificateResult
 
 // The result waiting indicates asynchronous work in the callback.
 // The reason given for an unavailable signature will be logged.
 @_spi(SwiftTLSProtocol)
-@available(SwiftTLS 0.1.0, *)
 public enum SignatureResult: Sendable, Hashable {
     case available(signature: Data, algorithm: UInt16)
     case unavailable(reason: String)
@@ -114,7 +109,6 @@ public enum SignatureResult: Sendable, Hashable {
 
 // Information passed into the callback.
 @_spi(SwiftTLSProtocol)
-@available(SwiftTLS 0.1.0, *)
 public struct SignatureInfo: Sendable {
     public var transcriptHash: Data
     public var peerOffer: PeerOffer
@@ -132,12 +126,10 @@ public struct SignatureInfo: Sendable {
 // Note: This callback must either return a result directly (available, unavailable)
 //  or return waiting and call `deliverResult` with the pending result.
 @_spi(SwiftTLSProtocol)
-@available(SwiftTLS 0.1.0, *)
 public typealias SignatureCallback = @Sendable (SignatureInfo) -> SignatureResult
 
 // Bundles the callbacks for the server to customize the certificate messages.
 @_spi(SwiftTLSProtocol)
-@available(SwiftTLS 0.1.0, *)
 public struct AsyncAuthenticator: Sendable {
     public var supportedCertificateTypes: [CertificateType]
     public var getCertificateChain: CertificateCallback
@@ -157,7 +149,6 @@ public struct AsyncAuthenticator: Sendable {
 // Waiting indicates ongoing asynchronous work in the callback.
 // The reason given for an invalid verification will be logged.
 @_spi(SwiftTLSProtocol)
-@available(SwiftTLS 0.1.0, *)
 public enum VerificationResult: Sendable, Hashable {
     case valid
     case invalid(reason: String)
@@ -166,7 +157,6 @@ public enum VerificationResult: Sendable, Hashable {
 
 // Information to verify the certificates and signature presented by the peer.
 @_spi(SwiftTLSProtocol)
-@available(SwiftTLS 0.1.0, *)
 public struct VerificationInfo: Sendable {
     public var certificates: CertificateList
     public var signatureAlgorithm: UInt16
@@ -191,11 +181,9 @@ public struct VerificationInfo: Sendable {
 // Note: This callback must either return a result directly (valid, invalid)
 //  or return waiting and call `deliverResult` with the pending result.
 @_spi(SwiftTLSProtocol)
-@available(SwiftTLS 0.1.0, *)
 public typealias VerificationCallback = @Sendable (VerificationInfo) -> VerificationResult
 
 @_spi(SwiftTLSProtocol)
-@available(SwiftTLS 0.1.0, *)
 public struct AsyncVerifier: Sendable {
     public var availableCertificateTypes: [CertificateType]
     public var verifyHandshake: VerificationCallback

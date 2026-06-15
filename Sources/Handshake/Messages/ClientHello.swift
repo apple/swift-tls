@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 struct ClientHello {
     var legacyVersion: ProtocolVersion
@@ -43,6 +44,7 @@ struct ClientHello {
     }
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension ClientHello {
     var serverCertificateTypes: [CertificateType] {
@@ -68,6 +70,7 @@ extension ClientHello {
     }
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension ClientHello {
     var signatureAlgorithms: [UInt16] {
@@ -80,6 +83,7 @@ extension ClientHello {
     }
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension ClientHello {
     var serverName: String? {
@@ -99,6 +103,7 @@ extension ClientHello {
     }
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension ClientHello {
     var alpns: [String] {
@@ -116,9 +121,11 @@ extension ClientHello {
     }
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension ClientHello: Hashable { }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension ClientHello: HandshakeMessageProtocol {
     static var handshakeType: HandshakeType {

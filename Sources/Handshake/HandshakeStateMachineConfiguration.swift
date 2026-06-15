@@ -23,6 +23,7 @@ import CryptoKit
 
 #if canImport(Darwin) || SWIFTTLS_EXCLAVEKIT
 import os.log
+// Availability due to `os.log`'s `Logger`
 @available(macOS 11, iOS 14, tvOS 14, watchOS 7, *)
 private let logger = Logger(subsystem: "com.apple.security.swifttls", category: "HandshakeStateMachineConfiguration")
 #elseif SWIFTTLS_EMBEDDED || SWIFTTLS_DRIVERKIT
@@ -34,7 +35,8 @@ private let logger = Logger(label: "com.apple.security.swifttls.HandshakeStateMa
 #endif
 
 @_spi(SwiftTLSOptions)
-@available(SwiftTLS 0.1.0, *)
+// Availability due to `CryptoKit`'s `P256.Signing.PublicKey`
+@available(macOS 11, iOS 14, tvOS 14, watchOS 7, *)
 public enum SwiftTLSPrivateKey {
     case p256(P256.Signing.PrivateKey)
 #if !SWIFTTLS_EMBEDDED && canImport(Darwin)
@@ -43,6 +45,7 @@ public enum SwiftTLSPrivateKey {
     case opaqueReference(SwiftTLSOpaqueReferenceKey)
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension HandshakeStateMachine {
     enum AuthenticationMethod {

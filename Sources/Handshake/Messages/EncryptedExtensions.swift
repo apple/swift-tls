@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 struct EncryptedExtensions {
     // TODO: enforcement on this value, only allow well-formed EncryptedExtensions.
@@ -22,9 +23,11 @@ struct EncryptedExtensions {
     }
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension EncryptedExtensions: Hashable { }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension EncryptedExtensions: HandshakeMessageProtocol {
     static var handshakeType: HandshakeType {

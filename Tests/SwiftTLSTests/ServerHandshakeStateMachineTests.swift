@@ -48,6 +48,7 @@ enum ErrorLocation {
     case readClientFinished
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 class ServerHandshakeStateMachineTests: XCTestCase {
     override func setUp() {

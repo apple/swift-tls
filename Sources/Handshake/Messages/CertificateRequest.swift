@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 struct CertificateRequest {
     var certificateRequestContext: ByteBuffer
@@ -24,9 +25,11 @@ struct CertificateRequest {
     }
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension CertificateRequest: Hashable { }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension CertificateRequest: HandshakeMessageProtocol {
     static var handshakeType: HandshakeType {

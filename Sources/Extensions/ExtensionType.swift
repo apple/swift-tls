@@ -12,7 +12,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-@available(SwiftTLS 0.1.0, *)
 struct ExtensionType: RawRepresentable, Sendable {
     var rawValue: UInt16
 
@@ -21,7 +20,6 @@ struct ExtensionType: RawRepresentable, Sendable {
     }
 }
 
-@available(SwiftTLS 0.1.0, *)
 extension ExtensionType {
     static let serverName = ExtensionType(rawValue: 0)
 
@@ -89,6 +87,7 @@ extension ExtensionType: CustomStringConvertible {
     }
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension InputBuffer {
     mutating func readExtensionType() -> ExtensionType? {
@@ -96,6 +95,7 @@ extension InputBuffer {
     }
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension ByteBuffer {
     @discardableResult

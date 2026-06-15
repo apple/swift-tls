@@ -23,6 +23,7 @@ import CryptoKit
 #endif
 
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 class ExtensionParsingTests: XCTestCase {
     /// Handy-dandy temporary key
@@ -1247,6 +1248,7 @@ class ExtensionParsingTests: XCTestCase {
     }
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension ByteBuffer {
     mutating func readExtension(messageType: HandshakeType, helloRetryRequest: Bool) throws(TLSError) -> Extension? {

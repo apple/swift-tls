@@ -13,7 +13,6 @@
 //===----------------------------------------------------------------------===//
 
 @_spi(SwiftTLSProtocol)
-@available(SwiftTLS 0.1.0, *)
 public struct CertificateType: RawRepresentable, Sendable {
     public var rawValue: UInt8
 
@@ -22,16 +21,13 @@ public struct CertificateType: RawRepresentable, Sendable {
     }
 }
 
-@available(SwiftTLS 0.1.0, *)
 extension CertificateType {
     public static let x509 = CertificateType(rawValue: 0)
     public static let rawPublicKey = CertificateType(rawValue: 2)
 }
 
-@available(SwiftTLS 0.1.0, *)
 extension CertificateType: Hashable { }
 
-@available(SwiftTLS 0.1.0, *)
 extension CertificateType: CustomStringConvertible {
     public var description: String {
         switch self {
@@ -45,6 +41,7 @@ extension CertificateType: CustomStringConvertible {
     }
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension InputBuffer {
     mutating func readCertificateType() -> CertificateType? {
@@ -52,6 +49,7 @@ extension InputBuffer {
     }
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension ByteBuffer {
     @discardableResult

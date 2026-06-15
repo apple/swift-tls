@@ -21,6 +21,7 @@ import CryptoKit
 @preconcurrency import Crypto
 #endif
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 struct PartialHandshakeResult {
     var handshakeBytesToSend: ByteBuffer?
@@ -41,6 +42,7 @@ struct PartialHandshakeResult {
 ///
 /// Note that this excludes the "initial" level. That level is implicit: until you observe one
 /// of these values, the connection remains at the `initial` level.
+// Availability due to `CryptoKit`'s `SymmetricKey`
 @available(macOS 10.15, iOS 13, tvOS 13, watchOS 6, *)
 enum EncryptionLevel {
     case earlyData(secret: SymmetricKey)

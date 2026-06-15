@@ -18,6 +18,7 @@ import XCTest
 @testable import SwiftTLS
 #endif
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 class InputBufferTests: XCTestCase {
     // MARK: - Basic properties
