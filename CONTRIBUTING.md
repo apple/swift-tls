@@ -1,6 +1,6 @@
 # Contributing to SwiftTLS
 
-Welcome to the community! Contributions are welcomed and encouraged. SwiftTLS is part of the Swift ecosystem and closely aligns with the [contribution guidelines for the Swift project](swift.org/contributing).
+Welcome to the community! Contributions are welcomed and encouraged. SwiftTLS is part of the Swift ecosystem and closely aligns with the [contribution guidelines for the Swift project](https://swift.org/contributing).
 
 ## How You Can Help
 
