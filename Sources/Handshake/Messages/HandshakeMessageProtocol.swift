@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 /// A protocol adopted by all handshake messages.
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 protocol HandshakeMessageProtocol {
     static var handshakeType: HandshakeType { get }
@@ -23,6 +24,7 @@ protocol HandshakeMessageProtocol {
     init(bytes: inout InputBuffer) throws(TLSError)
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension ByteBuffer {
     @discardableResult

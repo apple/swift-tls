@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension Extension {
     enum TicketRequest {
@@ -20,10 +21,10 @@ extension Extension {
     }
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension Extension.TicketRequest: Hashable { }
 
-@available(SwiftTLS 0.1.0, *)
 struct ClientTicketRequest: Hashable, CustomStringConvertible {
     var newSessionCount: UInt8
     var resumptionCount: UInt8
@@ -38,6 +39,7 @@ struct ClientTicketRequest: Hashable, CustomStringConvertible {
     }
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension Extension.TicketRequest {
     struct ServerTicketRequestHint {
@@ -49,9 +51,11 @@ extension Extension.TicketRequest {
     }
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension Extension.TicketRequest.ServerTicketRequestHint: Hashable { }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension Extension.TicketRequest.ServerTicketRequestHint: CustomStringConvertible {
     var description: String {
@@ -59,6 +63,7 @@ extension Extension.TicketRequest.ServerTicketRequestHint: CustomStringConvertib
     }
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension InputBuffer {
     mutating func readTicketRequestExtension(messageType: HandshakeType) throws(TLSError) -> Extension.TicketRequest {
@@ -80,6 +85,7 @@ extension InputBuffer {
     }
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension ByteBuffer {
     @discardableResult

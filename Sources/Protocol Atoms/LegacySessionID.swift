@@ -14,6 +14,7 @@
 
 #if canImport(Darwin) || SWIFTTLS_EXCLAVEKIT
 import os.log
+// Availability due to `os.log`'s `Logger`
 @available(macOS 11, iOS 14, tvOS 14, watchOS 7, *)
 private let logger = Logger(subsystem: "com.apple.security.swifttls", category: "Handshake")
 #elseif SWIFTTLS_EMBEDDED || SWIFTTLS_DRIVERKIT
@@ -24,6 +25,7 @@ import Logging
 private let logger = Logger(label: "com.apple.security.swifttls.Handshake")
 #endif
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 struct LegacySessionID {
     fileprivate var bytes: (UInt64, UInt64, UInt64, UInt64)
@@ -58,6 +60,7 @@ struct LegacySessionID {
     }
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension LegacySessionID: Hashable {
     static func ==(lhs: LegacySessionID, rhs: LegacySessionID) -> Bool {
@@ -75,6 +78,7 @@ extension LegacySessionID: Hashable {
     }
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension InputBuffer {
     mutating func readLegacySessionID() throws(TLSError) -> LegacySessionID? {
@@ -91,6 +95,7 @@ extension InputBuffer {
     }
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension ByteBuffer {
     @discardableResult

@@ -23,6 +23,7 @@ import CryptoKit
 
 #if canImport(Darwin) || SWIFTTLS_EXCLAVEKIT
 import os.log
+// Availability due to `os.log`'s `Logger`
 @available(macOS 11, iOS 14, tvOS 14, watchOS 7, *)
 private let logger = Logger(subsystem: "com.apple.security.swifttls", category: "PeerCertificateBundle")
 #elseif SWIFTTLS_EMBEDDED || SWIFTTLS_DRIVERKIT
@@ -38,6 +39,7 @@ private let logger = Logger(label: "com.apple.security.swifttls.PeerCertificateB
 ///
 /// Depending on negotiated extensions, the bundle holds either X.509 certificates or raw
 /// public keys; a single bundle uses exactly one of these representations.
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 struct PeerCertificateBundle {
     fileprivate var bundle: Bundle
@@ -203,6 +205,7 @@ struct PeerCertificateBundle {
     }
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension PeerCertificateBundle {
     /// The kinds of certificate bundle this package supports.
@@ -212,6 +215,7 @@ extension PeerCertificateBundle {
     }
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension PeerCertificateBundle {
     /// Whether this package supports unverified X.509.
@@ -254,9 +258,11 @@ extension PeerCertificateBundle {
     }()
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension PeerCertificateBundle: Equatable { }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension PeerCertificateBundle.Bundle: Equatable {
     static func ==(lhs: Self, rhs: Self) -> Bool {
@@ -271,6 +277,7 @@ extension PeerCertificateBundle.Bundle: Equatable {
     }
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension ByteBuffer {
     mutating func writePeerCertificateBundle(_ bundle: PeerCertificateBundle) {
@@ -289,6 +296,7 @@ extension ByteBuffer {
     }
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension InputBuffer {
     mutating func readPeerCertificateBundle() throws(TLSError) -> PeerCertificateBundle? {

@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension Extension {
     struct PreSharedKeyKexModes {
@@ -19,6 +20,7 @@ extension Extension {
     }
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension Extension.PreSharedKeyKexModes {
     struct Mode: RawRepresentable, Hashable {
@@ -33,9 +35,11 @@ extension Extension.PreSharedKeyKexModes {
     }
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension Extension.PreSharedKeyKexModes: Hashable { }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension InputBuffer {
     mutating func readPreSharedKeyKexModes(messageType: HandshakeType) throws(TLSError) -> Extension.PreSharedKeyKexModes {
@@ -60,6 +64,7 @@ extension InputBuffer {
     }
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension ByteBuffer {
     @discardableResult

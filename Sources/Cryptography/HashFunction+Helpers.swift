@@ -21,6 +21,7 @@ import CryptoKit
 @preconcurrency import Crypto
 #endif
 
+// Availability due to `CryptoKit`'s `HashFunction`
 @available(macOS 10.15, iOS 13, tvOS 13, watchOS 6, *)
 extension HashFunction {
     static var zeroHash: Self.Digest {
@@ -28,6 +29,7 @@ extension HashFunction {
     }
 }
 
+// Availability due to `CryptoKit`'s `HMAC`
 @available(macOS 10.15, iOS 13, tvOS 13, watchOS 6, *)
 extension HMAC {
     static func authenticationCode<Bytes: ContiguousBytes>(bytes: Bytes, using key: SymmetricKey) -> HashedAuthenticationCode<H> {

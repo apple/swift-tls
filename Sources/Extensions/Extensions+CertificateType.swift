@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension Extension {
     enum CertificateTypeExt {
@@ -20,9 +21,11 @@ extension Extension {
     }
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension Extension.CertificateTypeExt: Hashable { }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension ByteBuffer {
     @discardableResult
@@ -41,6 +44,7 @@ extension ByteBuffer {
     }
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension InputBuffer {
     mutating func readCertificateType(messageType: HandshakeType) throws(TLSError) -> Extension.CertificateTypeExt {

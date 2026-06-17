@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension Extension {
     struct SignatureAlgorithms {
@@ -23,9 +24,11 @@ extension Extension {
     }
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension Extension.SignatureAlgorithms: Hashable { }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension InputBuffer {
     mutating func readSignatureAlgorithms(messageType: HandshakeType) throws(TLSError) -> Extension.SignatureAlgorithms {
@@ -54,6 +57,7 @@ extension InputBuffer {
     }
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension ByteBuffer {
     @discardableResult

@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension Extension {
     enum PreSharedKey {
@@ -20,6 +21,7 @@ extension Extension {
     }
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension Extension.PreSharedKey {
     struct OfferedPSKs {
@@ -29,6 +31,7 @@ extension Extension.PreSharedKey {
     }
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension Extension.PreSharedKey.OfferedPSKs {
     struct PSKIdentity {
@@ -38,6 +41,7 @@ extension Extension.PreSharedKey.OfferedPSKs {
     }
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension Extension.PreSharedKey.OfferedPSKs {
     struct PSKBinderEntry {
@@ -45,18 +49,23 @@ extension Extension.PreSharedKey.OfferedPSKs {
     }
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension Extension.PreSharedKey: Hashable { }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension Extension.PreSharedKey.OfferedPSKs: Hashable { }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension Extension.PreSharedKey.OfferedPSKs.PSKIdentity: Hashable { }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension Extension.PreSharedKey.OfferedPSKs.PSKBinderEntry: Hashable { }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension InputBuffer {
     mutating func readPSKIdentity() throws(TLSError) -> Extension.PreSharedKey.OfferedPSKs.PSKIdentity? {
@@ -138,6 +147,7 @@ extension InputBuffer {
     }
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension ByteBuffer {
     @discardableResult

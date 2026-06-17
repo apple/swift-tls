@@ -18,6 +18,7 @@ import Foundation
 
 typealias ApplicationLayerProtocol = String
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension InputBuffer {
     mutating func readApplicationLayerProtocol() -> ApplicationLayerProtocol? {
@@ -34,6 +35,7 @@ extension InputBuffer {
     }
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension ByteBuffer {
     @discardableResult

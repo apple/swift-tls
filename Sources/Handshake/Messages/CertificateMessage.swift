@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 struct CertificateMessage {
     var certificateRequestContext: ByteBuffer
@@ -24,9 +25,11 @@ struct CertificateMessage {
     }
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension CertificateMessage: Hashable { }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension CertificateMessage {
     struct CertificateEntry {
@@ -42,9 +45,11 @@ extension CertificateMessage {
     }
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension CertificateMessage.CertificateEntry: Hashable { }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension CertificateMessage: HandshakeMessageProtocol {
     static var handshakeType: HandshakeType {
@@ -86,6 +91,7 @@ extension CertificateMessage: HandshakeMessageProtocol {
     }
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension InputBuffer {
     mutating func readCertificateEntry() throws(TLSError) -> CertificateMessage.CertificateEntry? {
@@ -103,6 +109,7 @@ extension InputBuffer {
     }
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension ByteBuffer {
     @discardableResult

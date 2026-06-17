@@ -16,7 +16,6 @@
 typealias CryptoKitMetaError = any Error
 #endif
 
-@available(SwiftTLS 0.1.0, *)
 enum TLSError: Error, Equatable {
     case truncatedMessage
     case excessBytes
@@ -66,7 +65,6 @@ enum TLSError: Error, Equatable {
     case refKeySigningFailure
 }
 
-@available(SwiftTLS 0.1.0, *)
 extension TLSError {
     static func wrappingCryptoError<Return, E:Error>(_ block: () throws(E) -> Return) throws(TLSError) -> Return {
         do {

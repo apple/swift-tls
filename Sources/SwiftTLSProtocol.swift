@@ -22,6 +22,7 @@ import CryptoKit
 #endif
 #if canImport(Darwin) || SWIFTTLS_EXCLAVEKIT
 import os.log
+// Availability due to `os.log`'s `Logger`
 @available(macOS 11, iOS 14, tvOS 14, watchOS 7, *)
 private let logger = Logger(subsystem: "com.apple.security.swifttls", category: "SwiftTLSProtocol")
 #elseif SWIFTTLS_EMBEDDED || SWIFTTLS_DRIVERKIT
@@ -33,7 +34,6 @@ private let logger = Logger(label: "com.apple.security.swifttls.SwiftTLSProtocol
 #endif
 
 @_spi(SwiftTLSProtocol)
-@available(SwiftTLS 0.1.0, *)
 public enum SwiftTLSError: Error, Equatable {
     case unsupportedOptions
     case invalidServerPrivateKey
@@ -42,7 +42,8 @@ public enum SwiftTLSError: Error, Equatable {
 }
 
 @_spi(SwiftTLSOptions)
-@available(SwiftTLS 0.1.0, *)
+// Availability due to `CryptoKit`'s `SecureEnclave.P256.Signing.PrivateKey`
+@available(macOS 11, iOS 14, tvOS 14, watchOS 7, *)
 public struct SwiftTLSOptions {
     @frozen public enum EncryptionLevel: CustomDebugStringConvertible {
         case initial
@@ -150,7 +151,8 @@ public struct SwiftTLSOptions {
 
 // MARK: Common helper functions
 
-@available(SwiftTLS 0.1.0, *)
+// Availability due to `CryptoKit`'s `SecureEnclave.P256.Signing.PrivateKey`
+@available(macOS 11, iOS 14, tvOS 14, watchOS 7, *)
 fileprivate extension CipherSuite {
     static func convertArray(_ input: [SwiftTLSOptions.CipherSuite]?) -> [CipherSuite]? {
         guard let input else { return nil }
@@ -165,6 +167,7 @@ fileprivate extension CipherSuite {
     }
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 fileprivate func epskFromSwiftTLSOptions(_ options: SwiftTLSOptions) throws(SwiftTLSError) -> EPSK? {
     var epsk: EPSK? = nil
@@ -184,6 +187,7 @@ fileprivate func epskFromSwiftTLSOptions(_ options: SwiftTLSOptions) throws(Swif
     return epsk
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 fileprivate func clientStateMachineFromTLSOptions(options: SwiftTLSOptions, forQUIC: Bool = true, latestError: inout LatestError?) throws(SwiftTLSError) -> HandshakeStateMachine {
     guard let applicationProtocols = options.applicationProtocols else {
@@ -289,6 +293,7 @@ fileprivate func clientStateMachineFromTLSOptions(options: SwiftTLSOptions, forQ
 
 #if !SWIFTTLS_CLIENT_ONLY
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 fileprivate func serverStateMachineFromTLSOptions(options: SwiftTLSOptions, forQUIC: Bool = true) throws(SwiftTLSError) -> ServerHandshakeStateMachine {
     var keys: [P256.Signing.PublicKey]? = nil
@@ -423,6 +428,7 @@ fileprivate func errorCodeFromLatestError(_ latestError: LatestError?) -> Int32 
 // MARK: QUIC Handshakers
 
 @_spi(SwiftTLSProtocol)
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 public class SwiftTLSHandshaker {
     public var receivedSessionTickets = [[UInt8]]()
@@ -530,6 +536,7 @@ public class SwiftTLSHandshaker {
     }
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 class SwiftTLSClientHandshaker: SwiftTLSHandshaker {
     var stateMachine: HandshakeStateMachine?
@@ -654,6 +661,7 @@ class SwiftTLSClientHandshaker: SwiftTLSHandshaker {
 
 #if !SWIFTTLS_CLIENT_ONLY
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 class SwiftTLSServerHandshaker: SwiftTLSHandshaker {
     var stateMachine: ServerHandshakeStateMachine?

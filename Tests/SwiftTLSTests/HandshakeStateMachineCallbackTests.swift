@@ -29,6 +29,7 @@ import CryptoKit
 import Security
 #endif
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 final class ClientCallbackFixtures: Sendable {
     let serverSigningKey: P256.Signing.PrivateKey
@@ -153,6 +154,7 @@ final class ClientCallbackFixtures: Sendable {
     }
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 class HandshakeStateMachineCallbackTests: XCTestCase {
 

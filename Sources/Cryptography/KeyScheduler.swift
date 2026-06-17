@@ -22,6 +22,7 @@ import CryptoKit
 #endif
 #if canImport(Darwin) || SWIFTTLS_EXCLAVEKIT
 import os.log
+// Availability due to `os.log`'s `Logger`
 @available(macOS 11, iOS 14, tvOS 14, watchOS 7, *)
 private let logger = Logger(subsystem: "com.apple.security.swifttls", category: "SessionKeyManager")
 #elseif SWIFTTLS_EMBEDDED || SWIFTTLS_DRIVERKIT
@@ -34,6 +35,7 @@ private let logger = Logger(label: "com.apple.security.swifttls.SessionKeyManage
 
 // Wrapper around SessionKeyManager that only exposes functions a client should
 // need to call to help avoid invalid transitions.
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 struct ClientSessionKeyManager<HF: HashFunction> {
     private var sessionKeyManager: SessionKeyManager<HF>
@@ -135,6 +137,7 @@ struct ClientSessionKeyManager<HF: HashFunction> {
 
 // Wrapper around SessionKeyManager that only exposes functions a server should
 // need to call to help avoid invalid transitions.
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 struct ServerSessionKeyManager<HF: HashFunction> {
     private var sessionKeyManager: SessionKeyManager<HF>
@@ -220,6 +223,7 @@ struct ServerSessionKeyManager<HF: HashFunction> {
 /// The TLS 1.3 key schedule builds out a ratchet of keys and secrets for various purposes.
 /// This object encapsulates the current state in the key schedule and provides access to the
 /// various secrets for the rest of the code to use.
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 fileprivate struct SessionKeyManager<HF: HashFunction> {
 
@@ -523,6 +527,7 @@ fileprivate struct SessionKeyManager<HF: HashFunction> {
     }
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension SessionKeyManager {
     fileprivate enum State {
@@ -561,6 +566,7 @@ extension SessionKeyManager {
     }
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension SessionKeyManager.State {
     fileprivate struct EarlySecret {
@@ -1000,6 +1006,7 @@ extension SessionKeyManager.State {
     }
 }
 
+// Availability due to `os.log`'s `Logger`
 @available(macOS 11, iOS 14, tvOS 14, watchOS 7, *)
 fileprivate extension Logger {
     func logInvalidStateTransition(stateName: String, event: String) {

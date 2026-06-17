@@ -17,15 +17,18 @@ import Foundation
 #endif
 #if canImport(CryptoKit)
 import CryptoKit
+// Availability due to `CryptoKit`'s `SymmetricKey`
 @available(macOS 10.15, iOS 13, tvOS 13, watchOS 6, *)
 typealias SymmetricKey = CryptoKit.SymmetricKey
 #elseif canImport(Crypto)
 @preconcurrency import Crypto
+// Availability due to `CryptoKit`'s `SymmetricKey`
 @available(macOS 10.15, iOS 13, tvOS 13, watchOS 6, *)
 typealias SymmetricKey = Crypto.SymmetricKey
 #endif
 
-@available(SwiftTLS 0.1.0, *)
+// Availability due to `CryptoKit`'s `SymmetricKey`
+@available(macOS 10.15, iOS 13, tvOS 13, watchOS 6, *)
 protocol EphemeralPrivateKey {
     var namedGroup: NamedGroup { get }
     var publicKeyData: Data { get }
@@ -33,6 +36,7 @@ protocol EphemeralPrivateKey {
     func decap(ciphertextData: Data) throws(TLSError) -> SymmetricKey
 }
 
+// Availability due to `CryptoKit`'s `MLKEM768`
 @available(SwiftTLS 0.1.0, *)
 enum GeneratedEphemeralPrivateKey: EphemeralPrivateKey {
     var namedGroup: NamedGroup {
@@ -88,7 +92,8 @@ enum GeneratedEphemeralPrivateKey: EphemeralPrivateKey {
     case X25519MLKEM768(X25519MLKEM768EphemeralKey)
 }
 
-@available(SwiftTLS 0.1.0, *)
+// Availability due to `CryptoKit`'s `Curve25519`
+@available(macOS 10.15, iOS 13, tvOS 13, watchOS 6, *)
 struct Curve25519EphemeralKey: EphemeralPrivateKey {
     var privateKey: Curve25519.KeyAgreement.PrivateKey
 
@@ -120,7 +125,8 @@ struct Curve25519EphemeralKey: EphemeralPrivateKey {
     }
 }
 
-@available(SwiftTLS 0.1.0, *)
+// Availability due to `CryptoKit`'s `P384`
+@available(macOS 10.15, iOS 13, tvOS 13, watchOS 6, *)
 struct P384EphemeralKey: EphemeralPrivateKey {
     typealias T = P384.KeyAgreement.PrivateKey
     var privateKey: P384.KeyAgreement.PrivateKey
@@ -153,6 +159,7 @@ struct P384EphemeralKey: EphemeralPrivateKey {
     }
 }
 
+// Availability due to `CryptoKit`'s `MLKEM768`
 @available(SwiftTLS 0.1.0, *)
 struct X25519MLKEM768EphemeralKey: EphemeralPrivateKey {
     var privateKeyA: Curve25519.KeyAgreement.PrivateKey
@@ -221,6 +228,7 @@ struct X25519MLKEM768EphemeralKey: EphemeralPrivateKey {
     }
 }
 
+// Availability due to `CryptoKit`'s `MLKEM768`
 @available(SwiftTLS 0.1.0, *)
 func generateEphemeralKeyForNamedGroup(_ group: NamedGroup) -> GeneratedEphemeralPrivateKey? {
     switch group {
@@ -238,6 +246,7 @@ func generateEphemeralKeyForNamedGroup(_ group: NamedGroup) -> GeneratedEphemera
     }
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension SymmetricKey {
     init(_copying bytes: RawSpan) {

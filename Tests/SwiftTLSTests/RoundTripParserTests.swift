@@ -18,6 +18,7 @@ import XCTest
 #endif
 
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 class RoundTripParserTests: XCTestCase {
     private func roundTripTest_oneShot(_ message: HandshakeMessage) throws {
@@ -230,6 +231,7 @@ class RoundTripParserTests: XCTestCase {
     }
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension ByteBuffer {
     init(_ string: String) {

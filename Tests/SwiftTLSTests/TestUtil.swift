@@ -25,6 +25,7 @@ import CryptoKit
 import Foundation
 #endif
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 var goodClientHello: ClientHello {
   let ephemeralKey = P384EphemeralKey()
@@ -51,6 +52,7 @@ var goodClientHello: ClientHello {
   )
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 class TestConfigurationGenerator {
     let serverSigningKey = P256.Signing.PrivateKey()

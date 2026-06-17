@@ -16,6 +16,7 @@
 import Foundation
 #endif
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension Extension {
     enum ApplicationLayerProtocolNegotiation {
@@ -24,9 +25,11 @@ extension Extension {
     }
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension Extension.ApplicationLayerProtocolNegotiation: Hashable { }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension ByteBuffer {
     @discardableResult
@@ -47,6 +50,7 @@ extension ByteBuffer {
     }
 }
 
+// Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension InputBuffer {
     mutating func readALPN(messageType: HandshakeType) throws(TLSError) -> Extension.ApplicationLayerProtocolNegotiation {
