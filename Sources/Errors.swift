@@ -63,6 +63,7 @@ enum TLSError: Error, Equatable {
     case handshakeFailure
     case invalidConfigurationOptions
     case refKeySigningFailure
+    case keyUsageLimitExceeded
 }
 
 extension TLSError {
