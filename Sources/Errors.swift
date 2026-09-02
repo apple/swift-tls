@@ -52,6 +52,7 @@ enum TLSError: Error, Equatable {
     case incorrectNonceLength
     case startHandshakeCalledOnServer
     case decryptError
+    case badRecordMac
     case internalError(reason: String)
     case wrappedCryptoError
     case illegalParameter
