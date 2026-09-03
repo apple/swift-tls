@@ -24,7 +24,7 @@ struct Random {
         precondition(bytes.count == MemoryLayout<Random>.size)
         self.bytes = (0, 0, 0, 0)
         withUnsafeMutableBytes(of: &self.bytes) {
-            $0.copyBytes(from: bytes)
+            unsafe $0.copyBytes(from: bytes)
         }
     }
 }
@@ -64,7 +64,7 @@ extension ByteBuffer {
     mutating func writeRandom(_ random: Random) -> Int {
         return withUnsafeBytes(of: random.bytes) {
             assert($0.count == 32)
-            return self.writeBytes($0)
+            return unsafe self.writeBytes($0)
         }
     }
 }

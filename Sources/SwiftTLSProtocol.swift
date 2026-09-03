@@ -18,7 +18,7 @@ import Foundation
 #if canImport(CryptoKit)
 import CryptoKit
 #elseif canImport(Crypto)
-@preconcurrency import Crypto
+@preconcurrency @unsafe import Crypto
 #endif
 #if canImport(Darwin) || SWIFTTLS_EXCLAVEKIT
 import os.log
@@ -508,8 +508,8 @@ public class SwiftTLSHandshaker {
             secretKey = secret
         }
 
-        let secretBytes = secretKey.withUnsafeBytes {
-            return [UInt8]($0)
+        let secretBytes = unsafe secretKey.withUnsafeBytes {
+            return unsafe [UInt8]($0)
         }
         return secretBytes
     }

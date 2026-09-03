@@ -52,6 +52,8 @@ var targetDependencies = [PackageDescription.Target.Dependency]()
 var settings: [SwiftSetting]? = [
     // Add build settings here
     .enableExperimentalFeature("Lifetimes"),
+    .strictMemorySafety(),
+    .treatWarning("StrictMemorySafety", as: .error),
 ]
 
 #if os(Linux)

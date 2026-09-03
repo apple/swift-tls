@@ -19,9 +19,9 @@ extension Array where Element == UInt8 {
     ///
     /// The span must contain exactly `count` bytes.
     init(copying bytes: RawSpan) {
-        self.init(unsafeUninitializedCapacity: bytes.byteCount) { outputBuffer, initializedCount in
+        unsafe self.init(unsafeUninitializedCapacity: bytes.byteCount) { outputBuffer, initializedCount in
             bytes.withUnsafeBytes { inputBuffer in
-                UnsafeMutableRawBufferPointer(outputBuffer).copyMemory(from: inputBuffer)
+                unsafe UnsafeMutableRawBufferPointer(outputBuffer).copyMemory(from: inputBuffer)
             }
             initializedCount = bytes.byteCount
         }
@@ -38,7 +38,7 @@ extension InlineArray where Element == UInt8 {
         precondition(count == bytes.byteCount)
         self.init { outputSpan in
             for i in 0..<count {
-                outputSpan.append(bytes.unsafeLoad(fromByteOffset: i, as: UInt8.self))
+                outputSpan.append(unsafe bytes.unsafeLoad(fromByteOffset: i, as: UInt8.self))
             }
         }
     }
@@ -49,7 +49,7 @@ extension InlineArray where Element == UInt8 {
 extension Hasher {
     mutating func combine(bytes: RawSpan) {
         bytes.withUnsafeBytes { buffer in
-            self.combine(bytes: buffer)
+            unsafe self.combine(bytes: buffer)
         }
     }
 }
@@ -74,7 +74,7 @@ extension OutputRawSpan {
     /// Appends the contents of the given raw span to this output span.
     mutating func append(contentsOf bytes: RawSpan) {
         for i in 0..<bytes.byteCount {
-            append(bytes.unsafeLoad(fromByteOffset: i, as: UInt8.self))
+            append(unsafe bytes.unsafeLoad(fromByteOffset: i, as: UInt8.self))
         }
     }
 }
@@ -83,6 +83,6 @@ extension OutputRawSpan {
 @available(SwiftTLS 0.1.0, *)
 extension RawSpan {
     subscript(index: Int) -> UInt8 {
-        unsafeLoad(fromByteOffset: index, as: UInt8.self)
+        unsafe unsafeLoad(fromByteOffset: index, as: UInt8.self)
     }
 }

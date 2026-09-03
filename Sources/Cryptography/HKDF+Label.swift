@@ -18,7 +18,7 @@ import Foundation
 #if canImport(CryptoKit)
 import CryptoKit
 #elseif canImport(Crypto)
-@preconcurrency import Crypto
+@preconcurrency @unsafe import Crypto
 #endif
 
 // Availability due to `CryptoKit`'s `HKDF`
@@ -48,9 +48,9 @@ extension HKDF {
         serializedLabel.append(contentsOf: "tls13 ".utf8)
         serializedLabel.append(contentsOf: label.utf8)
 
-        context.withUnsafeBytes { contextPointer in
+        unsafe context.withUnsafeBytes { contextPointer in
             serializedLabel.append(UInt8(contextPointer.count))
-            serializedLabel.append(contentsOf: contextPointer)
+            unsafe serializedLabel.append(contentsOf: contextPointer)
         }
 
         return Self.expand(pseudoRandomKey: secret, info: serializedLabel, outputByteCount: length)
@@ -67,11 +67,11 @@ extension HKDF {
 
     static func extract(inputKeyMaterial ikm: SymmetricKey, salt: SymmetricKey) -> HashedAuthenticationCode<H> {
         // This wrapper helps us deal with the fact that these types don't neatly fit into what CryptoKit wants.
-        return salt.withUnsafeBytes { saltPointer in
+        return unsafe salt.withUnsafeBytes { saltPointer in
             #if SWIFTTLS_EXCLAVEKIT
-            Self.extract(inputKeyMaterial: ikm, salt: Data(saltPointer))
+            unsafe Self.extract(inputKeyMaterial: ikm, salt: Data(saltPointer))
             #else
-            Self.extract(inputKeyMaterial: ikm, salt: saltPointer)
+            unsafe Self.extract(inputKeyMaterial: ikm, salt: saltPointer)
             #endif
         }
     }

@@ -539,7 +539,7 @@ class InputBufferTests: XCTestCase {
             _ = input.read(length: 1) // advance past 0x10
 
             withUnsafeTemporaryAllocation(byteCount: 8, alignment: 1) { raw in
-                var output = OutputRawSpan(buffer: raw, initializedCount: 0)
+                var output = unsafe OutputRawSpan(buffer: raw, initializedCount: 0)
                 let written = input.copy(to: &output)
                 XCTAssertEqual(written, 3)
 
@@ -547,10 +547,10 @@ class InputBufferTests: XCTestCase {
                 XCTAssertEqual(input.byteCount, 3)
                 XCTAssertEqual(input.position, 1)
 
-                let finalized = output.finalize(for: raw)
+                let finalized = unsafe output.finalize(for: raw)
                 XCTAssertEqual(finalized, 3)
 
-                let copied = Array(UnsafeBufferPointer(start: raw.baseAddress!.assumingMemoryBound(to: UInt8.self), count: 3))
+                let copied = unsafe Array(UnsafeBufferPointer(start: raw.baseAddress!.assumingMemoryBound(to: UInt8.self), count: 3))
                 XCTAssertEqual(copied, [0x20, 0x30, 0x40])
             }
         }
@@ -561,17 +561,17 @@ class InputBufferTests: XCTestCase {
         buffer.writeBytes([0x01, 0x02, 0x03, 0x04, 0x05])
         buffer.withInputBuffer { input in
             withUnsafeTemporaryAllocation(byteCount: 2, alignment: 1) { raw in
-                var output = OutputRawSpan(buffer: raw, initializedCount: 0)
+                var output = unsafe OutputRawSpan(buffer: raw, initializedCount: 0)
                 let written = input.copy(to: &output)
                 // Capped at the output's free capacity.
                 XCTAssertEqual(written, 2)
                 // Input position is not advanced.
                 XCTAssertEqual(input.position, 0)
 
-                let finalized = output.finalize(for: raw)
+                let finalized = unsafe output.finalize(for: raw)
                 XCTAssertEqual(finalized, 2)
 
-                let copied = Array(UnsafeBufferPointer(start: raw.baseAddress!.assumingMemoryBound(to: UInt8.self), count: 2))
+                let copied = unsafe Array(UnsafeBufferPointer(start: raw.baseAddress!.assumingMemoryBound(to: UInt8.self), count: 2))
                 XCTAssertEqual(copied, [0x01, 0x02])
             }
         }

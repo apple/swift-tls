@@ -30,7 +30,7 @@ extension InputBuffer {
         }
         // Convert RawSpan bytes to String
         return slice.bytes.withUnsafeBytes { buffer in
-            ApplicationLayerProtocol(decoding: buffer, as: UTF8.self)
+            unsafe ApplicationLayerProtocol(decoding: buffer, as: UTF8.self)
         }
     }
 }

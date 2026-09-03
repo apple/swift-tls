@@ -18,7 +18,7 @@ import Foundation
 #if canImport(CryptoKit)
 import CryptoKit
 #elseif canImport(Crypto)
-@preconcurrency import Crypto
+@preconcurrency @unsafe import Crypto
 #endif
 #if canImport(Darwin) || SWIFTTLS_EXCLAVEKIT
 import os.log
@@ -518,7 +518,7 @@ fileprivate struct SessionKeyManager<HF: HashFunction> {
         var transcriptHasher = HF()
         transcriptHasher.update(data: transcript.readableBytesView)
         let hash = transcriptHasher.finalize()
-        hash.withUnsafeBytes { _ = buffer.writeBytes($0) }
+        unsafe hash.withUnsafeBytes { _ = unsafe buffer.writeBytes($0) }
         return buffer
     }
 
@@ -893,7 +893,7 @@ extension SessionKeyManager.State {
             buffer.writeInteger(UInt8(0))
 
             let hash = self.transcriptHasher.finalize()
-            hash.withUnsafeBytes { _ = buffer.writeBytes($0) }
+            unsafe hash.withUnsafeBytes { _ = unsafe buffer.writeBytes($0) }
             return buffer
         }
     }
@@ -956,7 +956,7 @@ extension SessionKeyManager.State {
             buffer.writeInteger(UInt8(0))
 
             let hash = self.transcriptHasher.finalize()
-            hash.withUnsafeBytes { _ = buffer.writeBytes($0) }
+            unsafe hash.withUnsafeBytes { _ = unsafe buffer.writeBytes($0) }
             return buffer
         }
 

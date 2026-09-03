@@ -19,7 +19,7 @@ import XCTest
 #if canImport(CryptoKit)
 import CryptoKit
 #elseif canImport(Crypto)
-@preconcurrency import Crypto
+@preconcurrency @unsafe import Crypto
 #endif
 
 @available(SwiftTLS 0.1.0, *)
