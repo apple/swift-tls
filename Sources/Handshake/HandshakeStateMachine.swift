@@ -18,7 +18,7 @@ import Foundation
 #if canImport(CryptoKit)
 import CryptoKit
 #elseif canImport(Crypto)
-@preconcurrency import Crypto
+@preconcurrency @unsafe import Crypto
 #endif
 
 #if canImport(Darwin) || SWIFTTLS_EXCLAVEKIT

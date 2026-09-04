@@ -18,7 +18,7 @@ import Foundation
 #if canImport(CryptoKit)
 import CryptoKit
 #elseif canImport(Crypto)
-@preconcurrency import Crypto
+@preconcurrency @unsafe import Crypto
 #endif
 
 #if canImport(Darwin) || SWIFTTLS_EXCLAVEKIT
@@ -126,8 +126,8 @@ struct SessionTicket {
         buffer.writeLengthPrefixedImmutableBuffer(self.nonce)
         buffer.writeLengthPrefixedImmutableBuffer(self.ticket)
 
-        self.psk.withUnsafeBytes {
-            buffer.writeLengthPrefixedBytes($0)
+        unsafe self.psk.withUnsafeBytes {
+            unsafe buffer.writeLengthPrefixedBytes($0)
         }
 
         buffer.writeInteger(self.maxEarlyDataSize)
