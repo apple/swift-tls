@@ -603,6 +603,11 @@ struct HandshakeStateMachine {
         }
     }
 
+    /// Signals whether an incomplete handshake message is currently
+    /// buffered, waiting for more bytes.
+    ///
+    /// Used to enforce RFC 9846 §5.1: Handshake messages must not be
+    /// interleaved with other record types, and must not span a key change.
     var hasBufferedHandshakeBytes: Bool {
         self.parser.bytesToParse > 0
     }

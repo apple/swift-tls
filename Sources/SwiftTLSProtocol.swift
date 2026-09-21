@@ -34,6 +34,15 @@ private let logger = Logger(label: "com.apple.security.swifttls.SwiftTLSProtocol
 #endif
 
 @_spi(SwiftTLSProtocol)
+public enum SwiftTLSRecordProtocolState {
+    case initial
+    case handshake
+    case connected
+    case readclosed
+    case disconnected
+}
+
+@_spi(SwiftTLSProtocol)
 public enum SwiftTLSError: Error, Equatable {
     case unsupportedOptions
     case invalidServerPrivateKey
@@ -421,10 +430,6 @@ fileprivate func errorCodeFromLatestError(_ latestError: LatestError?) -> Int32 
     }
 }
 
-// WARNING:
-// The following type (SwiftTLSHandshaker) is referenced in SwiftNetwork.
-// Changing this interface may cause build failures for SwiftNetwork.
-
 // MARK: QUIC Handshakers
 
 @_spi(SwiftTLSProtocol)
@@ -749,6 +754,135 @@ class SwiftTLSServerHandshaker: SwiftTLSHandshaker {
             return nil
         }
         return [UInt8](transportParameters.readableBytesView)
+    }
+}
+
+@_spi(SwiftTLSProtocol)
+// Availability due to `RawSpan`
+@available(SwiftTLS 0.1.0, *)
+public struct SwiftTLSHandshakeAndRecordManager: ~Copyable {
+    public var state: SwiftTLSRecordProtocolState {
+        if recordHandler.handshakeStarted {
+            if recordHandler.alertSentOrReceived {
+                return .disconnected
+            }
+            if recordHandler.closureAlertReceived {
+                return .readclosed
+            }
+            if recordHandler.handshakeComplete {
+                return .connected
+            } else {
+                return .handshake
+            }
+        } else {
+            return .initial
+        }
+    }
+
+    fileprivate var latestError: LatestError? = nil
+
+    var recordHandler: TLSRecordHandler
+
+    public init(options: SwiftTLSOptions, isServer: Bool) throws(SwiftTLSError) {
+        if isServer {
+#if !SWIFTTLS_CLIENT_ONLY
+            let stateMachine = try serverStateMachineFromTLSOptions(options: options, forQUIC: false)
+            recordHandler = TLSRecordHandler(stateMachine: .server(stateMachine))
+#else
+            throw .unsupportedOptions
+#endif
+        } else {
+            let stateMachine = try clientStateMachineFromTLSOptions(options: options, forQUIC: false, latestError: &latestError)
+            recordHandler = TLSRecordHandler(stateMachine: .client(stateMachine))
+        }
+    }
+
+    public mutating func startHandshake() throws(SwiftTLSError) {
+        do {
+            try recordHandler.startHandshake()
+        } catch {
+            latestError = .tlsError(error)
+            throw SwiftTLSError.tlsError
+        }
+    }
+
+    public mutating func processNetworkData(networkDataIn: RawSpan) throws(SwiftTLSError) {
+        var buff = ByteBuffer(copying: networkDataIn)
+        do {
+            try recordHandler.processNetworkData(networkDataIn: &buff)
+        } catch {
+            latestError = .tlsError(error)
+            throw SwiftTLSError.tlsError
+        }
+    }
+
+    public mutating func processNetworkData(networkDataIn: UnsafeMutableRawBufferPointer) throws(SwiftTLSError) {
+        try processNetworkData(networkDataIn: networkDataIn.bytes)
+    }
+
+    public var isHandshakeComplete: Bool { state == .connected }
+
+    public var errorCode: Int32 { errorCodeFromLatestError(latestError) }
+
+    public var alertSentOrReceived: Bool {
+        return recordHandler.alertSentOrReceived
+    }
+
+    public mutating func sendCloseNotify() throws(SwiftTLSError) {
+        recordHandler.sendCloseNotify()
+        // doesn't throw anything now, but may want to in future
+    }
+
+    public mutating func setDeliverResultCallback(_ handler: (@Sendable (PendingAsyncResult) -> Void)?) {
+        self.recordHandler.setDeliverResultCallback(handler)
+    }
+
+    public mutating func applyAsyncResult(_ result: PendingAsyncResult) {
+        self.recordHandler.applyAsyncResult(result)
+    }
+
+    public mutating func continueHandshake() throws(SwiftTLSError) {
+        do {
+            try self.recordHandler.continueHandshake()
+        } catch {
+            self.latestError = .tlsError(error)
+            throw SwiftTLSError.tlsError
+        }
+    }
+
+    public mutating func getAvailableApplicationData(numBytes: Int) -> Data? {
+        return recordHandler.getApplicationData(numBytes)
+    }
+
+    public var availableApplicationDataLength: Int {
+        return recordHandler.applicationDataLength
+    }
+
+    public mutating func getOutput(numBytes: Int) -> Data? {
+        return recordHandler.getOutputData(numBytes)
+    }
+
+    public var outgoingBytesCount: Int {
+        return recordHandler.outgoingBytesCount
+    }
+
+    private mutating func addApplicationData(byteBuffer buf: inout ByteBuffer) throws(SwiftTLSError) {
+        do {
+            try recordHandler.addApplicationData(&buf)
+        } catch {
+            latestError = .tlsError(error)
+            throw SwiftTLSError.tlsError
+        }
+    }
+
+    public mutating func addApplicationData(_ data: Data) throws(SwiftTLSError) {
+            var buf = ByteBuffer(data: data)
+            try addApplicationData(byteBuffer: &buf)
+        }
+
+    public mutating func addApplicationData<Bytes: Sequence>(bytes: Bytes) throws(SwiftTLSError) where Bytes.Element == UInt8 {
+        var buf = ByteBuffer(bytes: bytes)
+        try addApplicationData(byteBuffer: &buf)
     }
 }
 
