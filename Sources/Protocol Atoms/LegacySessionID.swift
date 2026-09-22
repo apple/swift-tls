@@ -44,7 +44,7 @@ struct LegacySessionID {
         self.bytes = (0, 0, 0, 0)
         withUnsafeMutableBytes(of: &self.bytes) { outputBuffer in
             bytes.withUnsafeBytes { inputBuffer in
-                outputBuffer.copyBytes(from: inputBuffer)
+                unsafe outputBuffer.copyBytes(from: inputBuffer)
             }
         }
         self.length = bytes.byteCount
@@ -102,7 +102,7 @@ extension ByteBuffer {
     mutating func writeLegacySessionID(_ sessionID: LegacySessionID) -> Int {
         return self.writeVariableLengthVector(lengthFieldType: UInt8.self) { buffer in
             return withUnsafeBytes(of: sessionID.bytes) {
-                buffer.writeBytes($0.prefix(sessionID.length))
+                unsafe buffer.writeBytes($0.prefix(sessionID.length))
             }
         }
     }

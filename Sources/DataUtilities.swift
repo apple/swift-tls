@@ -25,7 +25,7 @@ extension Data {
             self = Data()
         } else {
             self = bytes.withUnsafeBytes { buffer in
-                Data(
+                unsafe Data(
                     UnsafeBufferPointer<UInt8>(
                         start: buffer.baseAddress!.assumingMemoryBound(to: UInt8.self),
                         count: buffer.count
@@ -38,7 +38,7 @@ extension Data {
     /// Appends the contents of the given span to this `Data` instance.
     mutating func append(contentsOf bytes: RawSpan) {
         bytes.withUnsafeBytes { buffer in
-            self.append(contentsOf: buffer)
+            unsafe self.append(contentsOf: buffer)
         }
     }
 
@@ -46,9 +46,9 @@ extension Data {
     ///
     /// Used as a workaround for SwiftSystem's `Data` missing the `bytes` property.
     func withBytes<R, E: Error>(_ body: (RawSpan) throws(E) -> R) throws(E) -> R {
-        let result: Result<R, E> = self.withUnsafeBytes { bufferPointer in
+        let result: Result<R, E> = unsafe self.withUnsafeBytes { bufferPointer in
             do throws(E) {
-                return .success(try body(bufferPointer.bytes))
+                return .success(try body(unsafe bufferPointer.bytes))
             } catch {
                 return .failure(error)
             }
@@ -62,7 +62,8 @@ extension Data {
 //
 // Use this wrapper to turn an UnsafeRawBufferPointer into something that conforms to
 // DataProtocol. This whole type should go away once the issue is fixed.
-struct UnsafeRawBufferPointerWrapper: DataProtocol, RandomAccessCollection, ContiguousBytes {
+@unsafe
+struct UnsafeRawBufferPointerWrapper: @unsafe DataProtocol, @unsafe RandomAccessCollection, ContiguousBytes {
     var wrapped: UnsafeRawBufferPointer
 
     typealias Element = UInt8
@@ -70,25 +71,25 @@ struct UnsafeRawBufferPointerWrapper: DataProtocol, RandomAccessCollection, Cont
     typealias Regions = CollectionOfOne<UnsafeRawBufferPointerWrapper>
 
     var regions: CollectionOfOne<UnsafeRawBufferPointerWrapper> {
-        CollectionOfOne(self)
+        unsafe CollectionOfOne(self)
     }
 
-    var startIndex: Int { wrapped.startIndex }
-    var endIndex: Int { wrapped.endIndex }
+    var startIndex: Int { unsafe wrapped.startIndex }
+    var endIndex: Int { unsafe wrapped.endIndex }
 
     subscript(index: Int) -> UInt8 {
         get {
-            wrapped[index]
+            unsafe wrapped[index]
         }
     }
 
     #if $Embedded
     func withUnsafeBytes<R, E>(_ body: (UnsafeRawBufferPointer) throws(E) -> R) throws(E) -> R {
-        try wrapped.withUnsafeBytes(body)
+        try unsafe wrapped.withUnsafeBytes(body)
     }
     #else
     func withUnsafeBytes<R>(_ body: (UnsafeRawBufferPointer) throws -> R) rethrows -> R {
-        try wrapped.withUnsafeBytes(body)
+        try unsafe wrapped.withUnsafeBytes(body)
     }
     #endif
 }

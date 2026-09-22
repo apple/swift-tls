@@ -100,14 +100,14 @@ extension InputBuffer {
         // Copy those bytes into a temporary value.
         let align = MemoryLayout<Value>.alignment
         return withUnsafeTemporaryAllocation(byteCount: byteCount, alignment: align) { valueBuffer in
-            var outputSpan = OutputRawSpan(
+            var outputSpan = unsafe OutputRawSpan(
                 buffer: valueBuffer,
                 initializedCount: 0
             )
             bytes.copy(to: &outputSpan)
-            let bytesWritten = outputSpan.finalize(for: valueBuffer)
+            let bytesWritten = unsafe outputSpan.finalize(for: valueBuffer)
             precondition(bytesWritten == byteCount)
-            return valueBuffer.load(as: Value.self)
+            return unsafe valueBuffer.load(as: Value.self)
         }
     }
 

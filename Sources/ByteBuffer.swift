@@ -90,7 +90,7 @@ struct ByteBuffer {
         var networkByteOrder = integer.bigEndian
         withUnsafeBytes(of: &networkByteOrder) {
             precondition($0.count == byteWidth)
-            self.backingData.append(contentsOf: $0)
+            unsafe self.backingData.append(contentsOf: $0)
         }
 
         return byteWidth
@@ -108,7 +108,7 @@ struct ByteBuffer {
         var networkByteOrder = integer.bigEndian
         withUnsafeBytes(of: &networkByteOrder) {
             precondition($0.count == byteWidth)
-            self.backingData.replaceSubrange(index..<endIndex, with: $0)
+            unsafe self.backingData.replaceSubrange(index..<endIndex, with: $0)
         }
 
         return byteWidth
@@ -128,10 +128,10 @@ struct ByteBuffer {
 
         _ = withUnsafeMutableBytes(of: &value) {
             #if canImport(Foundation) && !SWIFTTLS_EMBEDDED
-            self.backingData.copyBytes(to: $0, from: self.readerIndex..<endIndex)
+            unsafe self.backingData.copyBytes(to: $0, from: self.readerIndex..<endIndex)
             #else
             // SwiftSystem Data is missing copyBytes(to: from:)
-            $0.copyBytes(from: self.backingData[self.readerIndex..<endIndex])
+            unsafe $0.copyBytes(from: self.backingData[self.readerIndex..<endIndex])
             #endif
         }
         return IntegerType(bigEndian: value)

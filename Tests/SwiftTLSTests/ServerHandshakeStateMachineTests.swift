@@ -16,7 +16,7 @@ import XCTest
 #if canImport(CryptoKit)
 import CryptoKit
 #elseif canImport(Crypto)
-@preconcurrency import Crypto
+@preconcurrency @unsafe import Crypto
 #endif
 #if canImport(SwiftTLS) && !SWIFTTLS_BUILTIN_TESTS
 @testable @_spi(SwiftTLSProtocol) import SwiftTLS

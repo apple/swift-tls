@@ -21,7 +21,7 @@ import CryptoKit
 @available(macOS 10.15, iOS 13, tvOS 13, watchOS 6, *)
 typealias SymmetricKey = CryptoKit.SymmetricKey
 #elseif canImport(Crypto)
-@preconcurrency import Crypto
+@preconcurrency @unsafe import Crypto
 // Availability due to `CryptoKit`'s `SymmetricKey`
 @available(macOS 10.15, iOS 13, tvOS 13, watchOS 6, *)
 typealias SymmetricKey = Crypto.SymmetricKey
@@ -198,8 +198,8 @@ struct X25519MLKEM768EphemeralKey: EphemeralPrivateKey {
         let secretB = encapResult.sharedSecret
 
         var buffer = ByteBuffer()
-        secretB.withUnsafeBytes { _ = buffer.writeBytes($0) }
-        secretA.withUnsafeBytes { _ = buffer.writeBytes($0) }
+        unsafe secretB.withUnsafeBytes { _ = unsafe buffer.writeBytes($0) }
+        unsafe secretA.withUnsafeBytes { _ = unsafe buffer.writeBytes($0) }
         let bytes = buffer.readableBytesView
 
         let ciphertext = encapResult.encapsulated + self.privateKeyA.publicKey.rawRepresentation
@@ -220,8 +220,8 @@ struct X25519MLKEM768EphemeralKey: EphemeralPrivateKey {
         let secretB = try TLSError.wrappingCryptoError { try self.privateKeyB.decapsulate(peerMLKEMKeyBytes) }
 
         var buffer = ByteBuffer()
-        secretB.withUnsafeBytes { _ = buffer.writeBytes($0) }
-        secretA.withUnsafeBytes { _ = buffer.writeBytes($0) }
+        unsafe secretB.withUnsafeBytes { _ = unsafe buffer.writeBytes($0) }
+        unsafe secretA.withUnsafeBytes { _ = unsafe buffer.writeBytes($0) }
         let bytes = buffer.readableBytesView
 
         return SymmetricKey.init(data: bytes)
@@ -251,7 +251,7 @@ func generateEphemeralKeyForNamedGroup(_ group: NamedGroup) -> GeneratedEphemera
 extension SymmetricKey {
     init(_copying bytes: RawSpan) {
         self = bytes.withUnsafeBytes { buffer in
-            SymmetricKey(data: buffer)
+            unsafe SymmetricKey(data: buffer)
         }
     }
 }

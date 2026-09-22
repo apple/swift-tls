@@ -18,7 +18,7 @@ import Foundation
 #if canImport(CryptoKit)
 import CryptoKit
 #elseif canImport(Crypto)
-@preconcurrency import Crypto
+@preconcurrency @unsafe import Crypto
 #endif
 
 // Availability due to `CryptoKit`'s `HashFunction`
@@ -33,8 +33,8 @@ extension HashFunction {
 @available(macOS 10.15, iOS 13, tvOS 13, watchOS 6, *)
 extension HMAC {
     static func authenticationCode<Bytes: ContiguousBytes>(bytes: Bytes, using key: SymmetricKey) -> HashedAuthenticationCode<H> {
-        return bytes.withUnsafeBytes {
-            Self.authenticationCode(for: $0, using: key)
+        return unsafe bytes.withUnsafeBytes {
+            unsafe Self.authenticationCode(for: $0, using: key)
         }
     }
 }
