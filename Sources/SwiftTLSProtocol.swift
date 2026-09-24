@@ -783,6 +783,9 @@ public struct SwiftTLSHandshakeAndRecordManager: ~Copyable {
 
     var recordHandler: TLSRecordHandler
 
+    // Keeps destruction in-module; without it, optimized clients fail to link.
+    deinit {}
+
     public init(options: SwiftTLSOptions, isServer: Bool) throws(SwiftTLSError) {
         if isServer {
 #if !SWIFTTLS_CLIENT_ONLY
