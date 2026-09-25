@@ -167,9 +167,10 @@ class TestConfigurationGenerator {
         }
 
         if refKey {
+            let clientSigningKey = self.clientSigningKey
             let signCallback: SwiftTLSRefKeySignCallback = { (data: Data, sigAlg: UInt16) -> Data? in
                 do {
-                    return try self.clientSigningKey.signature(for: data).derRepresentation as Data
+                    return try clientSigningKey.signature(for: data).derRepresentation as Data
                 } catch {
                     return nil
                 }
@@ -218,9 +219,10 @@ class TestConfigurationGenerator {
         }
 
         if refKey {
+            let serverSigningKey = self.serverSigningKey
             let signCallback: SwiftTLSRefKeySignCallback = { (data: Data, sigAlg: UInt16) -> Data? in
                 do {
-                    return try self.serverSigningKey.signature(for: data).derRepresentation as Data
+                    return try serverSigningKey.signature(for: data).derRepresentation as Data
                 } catch {
                     return nil
                 }
