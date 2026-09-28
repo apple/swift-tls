@@ -757,6 +757,8 @@ class SwiftTLSServerHandshaker: SwiftTLSHandshaker {
     }
 }
 
+#endif
+
 @_spi(SwiftTLSProtocol)
 // Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
@@ -888,5 +890,3 @@ public struct SwiftTLSHandshakeAndRecordManager: ~Copyable {
         try addApplicationData(byteBuffer: &buf)
     }
 }
-
-#endif
