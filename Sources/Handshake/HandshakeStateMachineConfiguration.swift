@@ -142,6 +142,32 @@ extension HandshakeStateMachine {
             return nil
         }
 
+        /// The certificate types this client can verify from the server, offered in
+        /// `server_certificate_type`. Empty when the client verifies nothing.
+        var verifiableServerCertificateTypes: [CertificateType] {
+            switch verificationMethod {
+            case .certificateCallbacks(let asyncVerifier):
+                return asyncVerifier.verifiableCertificateTypes
+            case .rawPublicKey:
+                guard case .offer(let types) = PeerCertificateBundle.verificationCertificateTypes else {
+                    return []
+                }
+                return types
+            case .none:
+                return []
+            }
+        }
+
+        /// The certificate types this client can present, offered in `client_certificate_type`.
+        /// Empty when the client cannot authenticate itself.
+        var providableClientCertificateTypes: [CertificateType] {
+            guard self.signingKey != nil,
+                  case .offer(let types) = PeerCertificateBundle.availableCertificateTypes else {
+                return []
+            }
+            return types
+        }
+
         init(
             serverName: String? = nil,
             quicTransportParameters: ByteBuffer? = nil,

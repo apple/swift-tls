@@ -172,42 +172,42 @@ class HandshakeStateMachineCallbackTests: XCTestCase {
     var configAlwaysValid: HandshakeStateMachine.Configuration {
         HandshakeStateMachine.Configuration(
             fixedKeyExchangeGroup: NamedGroup.secp384.rawValue,
-            asyncVerifier: AsyncVerifier(availableCertificateTypes: [.rawPublicKey], verificationCallback: self.fixtures.verificationCallbackValid(info:))
+            asyncVerifier: AsyncVerifier(verifiableCertificateTypes: [.rawPublicKey], verificationCallback: self.fixtures.verificationCallbackValid(info:))
         )
     }
 
     var configAlwaysInvalid: HandshakeStateMachine.Configuration {
         HandshakeStateMachine.Configuration(
             fixedKeyExchangeGroup: NamedGroup.secp384.rawValue,
-            asyncVerifier: AsyncVerifier(availableCertificateTypes: [.x509], verificationCallback: self.fixtures.verificationCallbackInvalid(info:))
+            asyncVerifier: AsyncVerifier(verifiableCertificateTypes: [.x509], verificationCallback: self.fixtures.verificationCallbackInvalid(info:))
         )
     }
 
     var configAuthRawPublicKey: HandshakeStateMachine.Configuration {
         HandshakeStateMachine.Configuration(
             fixedKeyExchangeGroup: NamedGroup.secp384.rawValue,
-            asyncVerifier: AsyncVerifier(availableCertificateTypes: [.rawPublicKey], verificationCallback: self.fixtures.verificationCallbackRawPublicKey(info:))
+            asyncVerifier: AsyncVerifier(verifiableCertificateTypes: [.rawPublicKey], verificationCallback: self.fixtures.verificationCallbackRawPublicKey(info:))
         )
     }
 
     var configAuthDummyCertificate: HandshakeStateMachine.Configuration {
         HandshakeStateMachine.Configuration(
             fixedKeyExchangeGroup: NamedGroup.secp384.rawValue,
-            asyncVerifier: AsyncVerifier(availableCertificateTypes: [.x509], verificationCallback: self.fixtures.verificationCallbackDummyCertificate(info:))
+            asyncVerifier: AsyncVerifier(verifiableCertificateTypes: [.x509], verificationCallback: self.fixtures.verificationCallbackDummyCertificate(info:))
         )
     }
 
     var configAuthDummyCertificateAsync: HandshakeStateMachine.Configuration {
         HandshakeStateMachine.Configuration(
             fixedKeyExchangeGroup: NamedGroup.secp384.rawValue,
-            asyncVerifier: AsyncVerifier(availableCertificateTypes: [.x509], verificationCallback: self.fixtures.verificationCallbackDummyCertificateAsync(info:))
+            asyncVerifier: AsyncVerifier(verifiableCertificateTypes: [.x509], verificationCallback: self.fixtures.verificationCallbackDummyCertificateAsync(info:))
         )
     }
 
     var configAuthDummyCertificateCapture: HandshakeStateMachine.Configuration {
         HandshakeStateMachine.Configuration(
             fixedKeyExchangeGroup: NamedGroup.secp384.rawValue,
-            asyncVerifier: AsyncVerifier(availableCertificateTypes: [.x509], verificationCallback: self.fixtures.verificationCallbackCapture(info:))
+            asyncVerifier: AsyncVerifier(verifiableCertificateTypes: [.x509], verificationCallback: self.fixtures.verificationCallbackCapture(info:))
         )
     }
 
@@ -215,7 +215,7 @@ class HandshakeStateMachineCallbackTests: XCTestCase {
         HandshakeStateMachine.Configuration(
             fixedKeyExchangeGroup: NamedGroup.secp384.rawValue,
             asyncVerifier: AsyncVerifier(
-                availableCertificateTypes: [.rawPublicKey],
+                verifiableCertificateTypes: [.rawPublicKey],
                 verificationCallback: self.fixtures.verificationCallbackRawPublicKeyExpectBadSignature(info:)
             )
         )
@@ -852,7 +852,7 @@ class HandshakeStateMachineCallbackTests: XCTestCase {
     // run sad path (server selects certificate type not offered by client)
     //
     //    Server selects server_certificate_type not in client's offer
-    //    - Client configured with availableCertificateTypes: [.rawPublicKey] (only offers RPK)
+    //    - Client configured with verifiableCertificateTypes: [.rawPublicKey] (only offers RPK)
     //    - Server EncryptedExtensions sends server_certificate_type = .x509
     //    - Expected: TLSError.negotiationFailed at processHandshake() (line 746 of HandshakeState.swift — confirmNegotiated returns nil)
     func testReadNetworkDataServerSelectsUnsupportedTypeX509() throws {
@@ -911,7 +911,7 @@ class HandshakeStateMachineCallbackTests: XCTestCase {
     // run sad path (server selects certificate type not offered by client)
     //
     //    Server sends server_certificate_type when client didn't send the extension
-    //    - Client configured with availableCertificateTypes: [.x509] only (so client omits the extension per RFC 7250 4.1, and
+    //    - Client configured with verifiableCertificateTypes: [.x509] only (so client omits the extension per RFC 7250 4.1, and
     //    clientHello.serverCertificateTypes defaults to [.x509])
     //    - Server EncryptedExtensions sends server_certificate_type = .rawPublicKey
     //    - Expected: TLSError.negotiationFailed — the client's stored list is [.x509], and confirmNegotiated(.rawPublicKey) returns nil

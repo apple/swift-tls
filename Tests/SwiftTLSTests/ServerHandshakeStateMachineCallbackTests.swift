@@ -284,7 +284,7 @@ class ServerHandshakeStateMachineCallbackTests: XCTestCase {
             .Configuration(
                 quicTransportParameters: ByteBuffer("some opaque bytes"),
                 alpn: ["proto A", "proto B"],
-                asyncAuthenticator: AsyncAuthenticator(supportedCertificateTypes: [.rawPublicKey, .x509], getCertificateChain: self.fixtures.provideUnavailable(certInfo:), signTranscriptHash: self.fixtures.signRawPublicKey(_:))
+                asyncAuthenticator: AsyncAuthenticator(providableCertificateTypes: [.rawPublicKey, .x509], getCertificateChain: self.fixtures.provideUnavailable(certInfo:), signTranscriptHash: self.fixtures.signRawPublicKey(_:))
             )
     }
 
@@ -294,7 +294,7 @@ class ServerHandshakeStateMachineCallbackTests: XCTestCase {
             .Configuration(
                 quicTransportParameters: ByteBuffer("some opaque bytes"),
                 alpn: ["proto A", "proto B"],
-                asyncAuthenticator: AsyncAuthenticator(supportedCertificateTypes: [.rawPublicKey, .x509], getCertificateChain: self.fixtures.provideUnavailableAsync(certInfo:), signTranscriptHash: self.fixtures.signRawPublicKey(_:))
+                asyncAuthenticator: AsyncAuthenticator(providableCertificateTypes: [.rawPublicKey, .x509], getCertificateChain: self.fixtures.provideUnavailableAsync(certInfo:), signTranscriptHash: self.fixtures.signRawPublicKey(_:))
             )
     }
 
@@ -304,7 +304,7 @@ class ServerHandshakeStateMachineCallbackTests: XCTestCase {
             .Configuration(
                 quicTransportParameters: ByteBuffer("some opaque bytes"),
                 alpn: ["proto A", "proto B"],
-                asyncAuthenticator: AsyncAuthenticator(supportedCertificateTypes: [.rawPublicKey], getCertificateChain: self.fixtures.provideRawPublicKey(certInfo:), signTranscriptHash: self.fixtures.signUnavailable(_:))
+                asyncAuthenticator: AsyncAuthenticator(providableCertificateTypes: [.rawPublicKey], getCertificateChain: self.fixtures.provideRawPublicKey(certInfo:), signTranscriptHash: self.fixtures.signUnavailable(_:))
             )
     }
 
@@ -314,7 +314,7 @@ class ServerHandshakeStateMachineCallbackTests: XCTestCase {
             .Configuration(
                 quicTransportParameters: ByteBuffer("some opaque bytes"),
                 alpn: ["proto A", "proto B"],
-                asyncAuthenticator: AsyncAuthenticator(supportedCertificateTypes: [.x509], getCertificateChain: self.fixtures.provideCertificateAsync(certInfo:), signTranscriptHash: self.fixtures.signUnavailableAsync(_:))
+                asyncAuthenticator: AsyncAuthenticator(providableCertificateTypes: [.x509], getCertificateChain: self.fixtures.provideCertificateAsync(certInfo:), signTranscriptHash: self.fixtures.signUnavailableAsync(_:))
             )
     }
 
@@ -323,7 +323,7 @@ class ServerHandshakeStateMachineCallbackTests: XCTestCase {
             .Configuration(
                 quicTransportParameters: ByteBuffer("some opaque bytes"),
                 alpn: ["proto A", "proto B"],
-                asyncAuthenticator: AsyncAuthenticator(supportedCertificateTypes: [.rawPublicKey], getCertificateChain: self.fixtures.provideRawPublicKey(certInfo:), signTranscriptHash: self.fixtures.signRawPublicKey(_:))
+                asyncAuthenticator: AsyncAuthenticator(providableCertificateTypes: [.rawPublicKey], getCertificateChain: self.fixtures.provideRawPublicKey(certInfo:), signTranscriptHash: self.fixtures.signRawPublicKey(_:))
             )
     }
 
@@ -332,7 +332,7 @@ class ServerHandshakeStateMachineCallbackTests: XCTestCase {
             .Configuration(
                 quicTransportParameters: ByteBuffer("some opaque bytes"),
                 alpn: ["proto A", "proto B"],
-                asyncAuthenticator: AsyncAuthenticator(supportedCertificateTypes: [.x509], getCertificateChain: self.fixtures.provideCertificate(certInfo:), signTranscriptHash: self.fixtures.signCertificate(_:))
+                asyncAuthenticator: AsyncAuthenticator(providableCertificateTypes: [.x509], getCertificateChain: self.fixtures.provideCertificate(certInfo:), signTranscriptHash: self.fixtures.signCertificate(_:))
             )
     }
 
@@ -341,7 +341,7 @@ class ServerHandshakeStateMachineCallbackTests: XCTestCase {
             .Configuration(
                 quicTransportParameters: ByteBuffer("some opaque bytes"),
                 alpn: ["proto A", "proto B"],
-                asyncAuthenticator: AsyncAuthenticator(supportedCertificateTypes: [.x509], getCertificateChain: self.fixtures.provideCertificateAsync(certInfo:), signTranscriptHash: self.fixtures.signCertificateAsync(_:))
+                asyncAuthenticator: AsyncAuthenticator(providableCertificateTypes: [.x509], getCertificateChain: self.fixtures.provideCertificateAsync(certInfo:), signTranscriptHash: self.fixtures.signCertificateAsync(_:))
             )
     }
 
@@ -350,7 +350,7 @@ class ServerHandshakeStateMachineCallbackTests: XCTestCase {
             .Configuration(
                 quicTransportParameters: ByteBuffer("some opaque bytes"),
                 alpn: ["proto A", "proto B"],
-                asyncAuthenticator: AsyncAuthenticator(supportedCertificateTypes: [.x509], getCertificateChain: self.fixtures.provideCertificate(certInfo:), signTranscriptHash: self.fixtures.signCertificateWithWrongSignatureAlgorithm(_:))
+                asyncAuthenticator: AsyncAuthenticator(providableCertificateTypes: [.x509], getCertificateChain: self.fixtures.provideCertificate(certInfo:), signTranscriptHash: self.fixtures.signCertificateWithWrongSignatureAlgorithm(_:))
             )
     }
 
@@ -359,7 +359,7 @@ class ServerHandshakeStateMachineCallbackTests: XCTestCase {
             .Configuration(
                 quicTransportParameters: ByteBuffer("some opaque bytes"),
                 alpn: ["proto A", "proto B"],
-                asyncAuthenticator: AsyncAuthenticator(supportedCertificateTypes: [.x509], getCertificateChain: self.fixtures.provideCertificateAsync(certInfo:), signTranscriptHash: self.fixtures.signCertificateWithWrongSignatureAlgorithmAsync(_:))
+                asyncAuthenticator: AsyncAuthenticator(providableCertificateTypes: [.x509], getCertificateChain: self.fixtures.provideCertificateAsync(certInfo:), signTranscriptHash: self.fixtures.signCertificateWithWrongSignatureAlgorithmAsync(_:))
             )
     }
 
@@ -377,7 +377,7 @@ class ServerHandshakeStateMachineCallbackTests: XCTestCase {
             .Configuration(
                 quicTransportParameters: ByteBuffer("some opaque bytes"),
                 alpn: ["proto A", "proto B"],
-                asyncAuthenticator: AsyncAuthenticator(supportedCertificateTypes: [.x509, .rawPublicKey], getCertificateChain: self.fixtures.provideBothAvailable(certInfo:), signTranscriptHash: self.fixtures.signBothAvailable(_:))
+                asyncAuthenticator: AsyncAuthenticator(providableCertificateTypes: [.x509, .rawPublicKey], getCertificateChain: self.fixtures.provideBothAvailable(certInfo:), signTranscriptHash: self.fixtures.signBothAvailable(_:))
             )
     }
 
@@ -388,7 +388,7 @@ class ServerHandshakeStateMachineCallbackTests: XCTestCase {
                 alpn: ["proto A", "proto B"],
                 validPeerPublicKeys: [self.fixtures.clientAuthKey.publicKey],
                 clientAuthRequired: true,
-                asyncAuthenticator: AsyncAuthenticator(supportedCertificateTypes: [.rawPublicKey], getCertificateChain: self.fixtures.provideRawPublicKey(certInfo:), signTranscriptHash: self.fixtures.signRawPublicKey(_:))
+                asyncAuthenticator: AsyncAuthenticator(providableCertificateTypes: [.rawPublicKey], getCertificateChain: self.fixtures.provideRawPublicKey(certInfo:), signTranscriptHash: self.fixtures.signRawPublicKey(_:))
             )
     }
 
@@ -398,7 +398,7 @@ class ServerHandshakeStateMachineCallbackTests: XCTestCase {
                 quicTransportParameters: ByteBuffer("some opaque bytes"),
                 alpn: ["proto A", "proto B"],
                 clientAuthRequired: true,
-                asyncAuthenticator: AsyncAuthenticator(supportedCertificateTypes: [.x509], getCertificateChain: self.fixtures.provideCertificate(certInfo:), signTranscriptHash: self.fixtures.signCertificate(_:)),
+                asyncAuthenticator: AsyncAuthenticator(providableCertificateTypes: [.x509], getCertificateChain: self.fixtures.provideCertificate(certInfo:), signTranscriptHash: self.fixtures.signCertificate(_:)),
             )
     }
 
@@ -410,7 +410,7 @@ class ServerHandshakeStateMachineCallbackTests: XCTestCase {
             quicTransportParameters: ByteBuffer("some opaque bytes"),
             alpn: ["proto A"],
             fixedKeyExchangeGroup: NamedGroup.secp384.rawValue,
-            asyncVerifier: AsyncVerifier(availableCertificateTypes: [.rawPublicKey], verificationCallback: self.fixtures.verificationCallbackRawPublicKey(info:))
+            asyncVerifier: AsyncVerifier(verifiableCertificateTypes: [.rawPublicKey], verificationCallback: self.fixtures.verificationCallbackRawPublicKey(info:))
         )
     }
 
@@ -421,7 +421,7 @@ class ServerHandshakeStateMachineCallbackTests: XCTestCase {
             alpn: ["proto A"],
             fixedKeyExchangeGroup: NamedGroup.secp384.rawValue,
             signingKey: .p256(self.fixtures.clientAuthKey),
-            asyncVerifier: AsyncVerifier(availableCertificateTypes: [.rawPublicKey], verificationCallback: self.fixtures.verificationCallbackRawPublicKey(info:))
+            asyncVerifier: AsyncVerifier(verifiableCertificateTypes: [.rawPublicKey], verificationCallback: self.fixtures.verificationCallbackRawPublicKey(info:))
         )
     }
 
@@ -431,7 +431,7 @@ class ServerHandshakeStateMachineCallbackTests: XCTestCase {
             quicTransportParameters: ByteBuffer("some opaque bytes"),
             alpn: ["proto A"],
             fixedKeyExchangeGroup: NamedGroup.secp384.rawValue,
-            asyncVerifier: AsyncVerifier(availableCertificateTypes: [.x509], verificationCallback: self.fixtures.verificationCallbackCertificate(info:))
+            asyncVerifier: AsyncVerifier(verifiableCertificateTypes: [.x509], verificationCallback: self.fixtures.verificationCallbackCertificate(info:))
         )
     }
 
@@ -441,7 +441,7 @@ class ServerHandshakeStateMachineCallbackTests: XCTestCase {
             quicTransportParameters: ByteBuffer("some opaque bytes"),
             alpn: ["proto A"],
             fixedKeyExchangeGroup: NamedGroup.secp384.rawValue,
-            asyncVerifier: AsyncVerifier(availableCertificateTypes: [], verificationCallback: self.fixtures.verificationCallbackCertificate(info:))
+            asyncVerifier: AsyncVerifier(verifiableCertificateTypes: [], verificationCallback: self.fixtures.verificationCallbackCertificate(info:))
         )
     }
 
@@ -451,7 +451,7 @@ class ServerHandshakeStateMachineCallbackTests: XCTestCase {
             quicTransportParameters: ByteBuffer("some opaque bytes"),
             alpn: ["proto A"],
             fixedKeyExchangeGroup: NamedGroup.secp384.rawValue,
-            asyncVerifier: AsyncVerifier(availableCertificateTypes: [.init(rawValue: 0xFF)], verificationCallback: self.fixtures.verificationCallbackCertificate(info:))
+            asyncVerifier: AsyncVerifier(verifiableCertificateTypes: [.init(rawValue: 0xFF)], verificationCallback: self.fixtures.verificationCallbackCertificate(info:))
         )
     }
 
@@ -461,7 +461,7 @@ class ServerHandshakeStateMachineCallbackTests: XCTestCase {
             quicTransportParameters: ByteBuffer("some opaque bytes"),
             alpn: ["proto A"],
             fixedKeyExchangeGroup: NamedGroup.secp384.rawValue,
-            asyncVerifier: AsyncVerifier(availableCertificateTypes: [.x509], verificationCallback: self.fixtures.verificationCallbackCertificate(info:))
+            asyncVerifier: AsyncVerifier(verifiableCertificateTypes: [.x509], verificationCallback: self.fixtures.verificationCallbackCertificate(info:))
         )
     }
 
@@ -481,7 +481,7 @@ class ServerHandshakeStateMachineCallbackTests: XCTestCase {
             quicTransportParameters: ByteBuffer("some opaque bytes"),
             alpn: ["proto A"],
             fixedKeyExchangeGroup: NamedGroup.secp384.rawValue,
-            asyncVerifier: AsyncVerifier(availableCertificateTypes: [.x509, .rawPublicKey], verificationCallback: self.fixtures.verificationCallbackBothAvailable(info:))
+            asyncVerifier: AsyncVerifier(verifiableCertificateTypes: [.x509, .rawPublicKey], verificationCallback: self.fixtures.verificationCallbackBothAvailable(info:))
         )
     }
 
@@ -873,7 +873,7 @@ class ServerHandshakeStateMachineCallbackTests: XCTestCase {
             quicTransportParameters: ByteBuffer("some opaque bytes"),
             alpn: ["proto A", "proto B"],
             asyncAuthenticator: AsyncAuthenticator(
-                supportedCertificateTypes: [.x509],
+                providableCertificateTypes: [.x509],
                 getCertificateChain: { certInfo in
                     capturedCertClosure.withLock { $0 = certInfo.deliverResult }
                     return .waiting
@@ -935,7 +935,7 @@ class ServerHandshakeStateMachineCallbackTests: XCTestCase {
             quicTransportParameters: ByteBuffer("some opaque bytes"),
             alpn: ["proto A", "proto B"],
             asyncAuthenticator: AsyncAuthenticator(
-                supportedCertificateTypes: [.x509],
+                providableCertificateTypes: [.x509],
                 getCertificateChain: { _ in .waiting },
                 signTranscriptHash: self.fixtures.signCertificate(_:)
             )
@@ -984,7 +984,7 @@ class ServerHandshakeStateMachineCallbackTests: XCTestCase {
             quicTransportParameters: ByteBuffer("some opaque bytes"),
             alpn: ["proto A", "proto B"],
             asyncAuthenticator: AsyncAuthenticator(
-                supportedCertificateTypes: [.x509],
+                providableCertificateTypes: [.x509],
                 getCertificateChain: self.fixtures.provideCertificate(certInfo:),
                 signTranscriptHash: { _ in .waiting }
             )
@@ -1166,7 +1166,7 @@ class ServerHandshakeStateMachineCallbackTests: XCTestCase {
         try runFailedHandshake(
             clientStateMachine: &clientStateMachine,
             serverStateMachine: &serverStateMachine,
-            // TODO: This should probably fail in `validateAndDetermineCertificateType`?
+            // TODO: This should probably fail in `negotiateServerCertificateType`?
             //  But when the client sends an empty certificate list, the server does not
             //  compare types and this will be a failure in the callback that cannot
             //  provide suitable certificates.
@@ -1232,7 +1232,7 @@ class ServerHandshakeStateMachineCallbackTests: XCTestCase {
             quicTransportParameters: ByteBuffer("some opaque bytes"),
             alpn: ["proto A", "proto B"],
             asyncAuthenticator: AsyncAuthenticator(
-                supportedCertificateTypes: [.x509],
+                providableCertificateTypes: [.x509],
                 getCertificateChain: { _ in .waiting },
                 signTranscriptHash: self.fixtures.signCertificate(_:)
             )
@@ -1272,7 +1272,7 @@ class ServerHandshakeStateMachineCallbackTests: XCTestCase {
     }
 
     // Server requires client RPK auth, client doesn't send client_certificate_type
-    // The server has clientAuthRequired = true and serverSupportedClientCertificateTypes = [.rawPublicKey].
+    // The server has clientAuthRequired = true and verifiableClientCertificateTypes = [.rawPublicKey].
     // negotiateClientCertificateType() returns nil (client didn't offer the extension).
     // Server should throw TLSError.handshakeFailure (line 916-918).
     func testRPKClientAuthNegotiationFailure() throws {

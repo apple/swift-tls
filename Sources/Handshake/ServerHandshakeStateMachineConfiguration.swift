@@ -129,6 +129,30 @@ extension ServerHandshakeStateMachine {
             return nil
         }
 
+        /// The certificate types this server can present, negotiated via `server_certificate_type`.
+        var providableServerCertificateTypes: [CertificateType] {
+            if let asyncAuthenticator {
+                return asyncAuthenticator.providableCertificateTypes
+            }
+            guard case .offer(let types) = PeerCertificateBundle.availableCertificateTypes else {
+                return []
+            }
+            return types
+        }
+
+        /// The certificate types this server can verify from the client, negotiated via
+        /// `client_certificate_type`.
+        ///
+        /// Deliberately independent of `providableServerCertificateTypes`: what this server can
+        /// present says nothing about what it can verify.
+        // TODO: derive from a verification method once callback-based client verification exists.
+        var verifiableClientCertificateTypes: [CertificateType] {
+            guard case .offer(let types) = PeerCertificateBundle.verificationCertificateTypes else {
+                return []
+            }
+            return types
+        }
+
         init(
             serverName: String? = nil,
             quicTransportParameters: ByteBuffer? = nil,

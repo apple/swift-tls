@@ -148,27 +148,18 @@ struct HandshakeStateMachine {
         // We don't send the `server_certificate_type` extension if we are
         // configured to only trust x509 or none. Send it if we are
         // configured to trust only raw public keys or multiple types.
-        switch idleState.configuration.verificationMethod {
-        case .certificateCallbacks(let asyncVerifier):
-            let certificateTypes = asyncVerifier.availableCertificateTypes
-            if certificateTypes.count > 1
-                || (certificateTypes.count == 1 && certificateTypes.first != .x509) {
-                logger.debug("client sending server_certificate_types extension")
-                helloExtensions.append(.serverCertificateType(.offer(certificateTypes)))
-            }
-        case .rawPublicKey:
+        let verifiableServerTypes = idleState.configuration.verifiableServerCertificateTypes
+        if !verifiableServerTypes.isEmpty && verifiableServerTypes != [.x509] {
             logger.debug("client sending server_certificate_types extension")
-            helloExtensions.append(.serverCertificateType(PeerCertificateBundle.verificationCertificateTypes))
-        case .none:
-            break
+            helloExtensions.append(.serverCertificateType(.offer(verifiableServerTypes)))
         }
 
-        // If configured with a signingKey then we can provide a raw public key Certificate Message
-        // in response to a CertificateRequest message from the server.
-        // This extension must be omitted if we don't actually have an RPK.
-        if idleState.configuration.signingKey != nil {
+        // Offered only when we can present a Certificate Message in response to a
+        // CertificateRequest message from the server.
+        let providableClientTypes = idleState.configuration.providableClientCertificateTypes
+        if !providableClientTypes.isEmpty {
             logger.debug("client sending client_certificate_types extension")
-            helloExtensions.append(.clientCertificateType(PeerCertificateBundle.availableCertificateTypes))
+            helloExtensions.append(.clientCertificateType(.offer(providableClientTypes)))
         }
 
         if let serverName = idleState.configuration.serverName {

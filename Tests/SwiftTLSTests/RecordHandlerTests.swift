@@ -1223,7 +1223,7 @@ class TLSRecordHandlerTests: XCTestCase {
             alpn: ["proto A", "proto B"],
             transportIsQUIC: false,
             asyncAuthenticator: AsyncAuthenticator(
-                supportedCertificateTypes: [.x509],
+                providableCertificateTypes: [.x509],
                 getCertificateChain: { certInfo in
                     capturedCertClosure.withLock { $0 = certInfo.deliverResult }
                     return .waiting
@@ -1240,7 +1240,7 @@ class TLSRecordHandlerTests: XCTestCase {
             alpn: ["proto A"],
             fixedKeyExchangeGroup: NamedGroup.secp384.rawValue,
             asyncVerifier: AsyncVerifier(
-                availableCertificateTypes: [.x509],
+                verifiableCertificateTypes: [.x509],
                 verificationCallback: { _ in .valid }
             )
         )

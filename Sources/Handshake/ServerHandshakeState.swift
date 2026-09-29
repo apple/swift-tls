@@ -287,12 +287,6 @@ extension ServerHandshakeState {
 
     }
 
-    struct NegotiatedParams {
-        let negotiatedGroup: NamedGroup
-        let negotiatedSignatureAlgorithm: SignatureScheme
-        let negotiatedCertificateType: CertificateType
-    }
-
     struct ClientHelloVerifier {
         var observedExtensionTypes = Set<ExtensionType>()
         var clientKeyShares: [Extension.KeyShare.KeyShareEntry]? = nil
@@ -306,10 +300,12 @@ extension ServerHandshakeState {
         var clientALPN: [ApplicationLayerProtocol]? = nil
         var clientOfferedPSKs: Extension.PreSharedKey.OfferedPSKs? = nil
         var clientIndicatedEarlyData: Bool = false
+        /// Set by `validateExtensions()`. `nil` when the client did not offer the extension.
+        var negotiatedServerCertificateType: CertificateType? = nil
         let serverSupportedGroups: [NamedGroup]
         let serverSupportedSignatureAlgs: [SignatureScheme] /* must include at least one element */
-        let serverSupportedCertificateTypes: [CertificateType] /* must include at least one element */
-        let serverSupportedClientCertificateTypes: [CertificateType] /* must include at least one element */
+        let providableServerCertificateTypes: [CertificateType]
+        let verifiableClientCertificateTypes: [CertificateType]
         let serverSupportedPSKKexModes: [Extension.PreSharedKeyKexModes.Mode]
         let serverSupportedPSKs: [GeneralEPSK]
         let useRawEPSKs: Bool
@@ -494,36 +490,6 @@ extension ServerHandshakeState {
             }
         }
 
-        private func validateAndDetermineCertificateType() throws(TLSError) -> CertificateType {
-            // Process server_certificate_type extension
-            if let clientRequestedServerCertificateTypes, clientRequestedServerCertificateTypes.count > 0 {
-                var commonServerCertType: CertificateType? = nil
-                for certType in clientRequestedServerCertificateTypes {
-                    if serverSupportedCertificateTypes.contains(certType) {
-                        commonServerCertType = certType
-                        break
-                    }
-                }
-
-                // if server does not have any certificate type in common with the client,
-                // server terminates the session with a fatal alert of type "unsupported_certificate"
-                if commonServerCertType == nil {
-                    logger.error("client requested unsupported server certificate type")
-                    throw TLSError.unsupportedCertificate
-                }
-                return commonServerCertType!
-            }
-            return serverSupportedCertificateTypes[0]
-        }
-
-        private func validateSignatureAlgorithms(serverCertificateType: CertificateType) throws(TLSError) {
-            if clientOfferedGroups == nil && serverCertificateType == .x509 {
-                // if using certificate authentication signature_algorithms extension is required
-                logger.error("client hello missing required signature_algorithms extension")
-                throw TLSError.missingExtension
-            }
-        }
-
         private func validateKeyShares() throws(TLSError) {
             // key_shares extension required if using DHE or ECDHE key exchange
             guard let clientKeyShares else {
@@ -576,17 +542,21 @@ extension ServerHandshakeState {
         }
 
         func negotiateServerCertificateType() throws(TLSError) -> CertificateType? {
-            var commonServerCertType: CertificateType? = nil
-            // Process server_certificate_type extension
-            if let clientRequestedServerCertificateTypes {
-                for certType in clientRequestedServerCertificateTypes {
-                    if serverSupportedCertificateTypes.contains(certType) {
-                        commonServerCertType = certType
-                        break
-                    }
+            // An empty list is treated as if the extension was absent.
+            guard let clientRequestedServerCertificateTypes, !clientRequestedServerCertificateTypes.isEmpty else {
+                return nil
+            }
+
+            for certType in clientRequestedServerCertificateTypes {
+                if providableServerCertificateTypes.contains(certType) {
+                    return certType
                 }
             }
-            return commonServerCertType
+
+            // If the server has no certificate type in common with the client, it
+            // terminates the session with a fatal alert of type "unsupported_certificate".
+            logger.error("client requested unsupported server certificate type")
+            throw TLSError.unsupportedCertificate
         }
 
         func negotiateClientCertificateType() throws(TLSError) -> CertificateType? {
@@ -594,7 +564,7 @@ extension ServerHandshakeState {
             // Process client_certificate_type extension
             if let clientRequestedClientCertificateTypes {
                 for certType in clientRequestedClientCertificateTypes {
-                    if serverSupportedClientCertificateTypes.contains(certType) {
+                    if verifiableClientCertificateTypes.contains(certType) {
                         commonClientCertType = certType
                         break
                     }
@@ -639,11 +609,10 @@ extension ServerHandshakeState {
             return clientKeyShare
         }
 
-        func validateExtensions() throws(TLSError) {
+        mutating func validateExtensions() throws(TLSError) {
             try validateSupportedVersions()
             try validateSupportedGroups()
-            let serverCertificateType = try validateAndDetermineCertificateType()
-            try validateSignatureAlgorithms(serverCertificateType: serverCertificateType)
+            self.negotiatedServerCertificateType = try negotiateServerCertificateType()
             try validateKeyShares()
             try validatePSKKexModes()
         }
@@ -787,24 +756,12 @@ extension ServerHandshakeState {
                 throw TLSError.handshakeInvalidMessage
             }
 
-            var serverSupportedCertificateTypes: [CertificateType] = []
-            if let authenticator = idleState.configuration.asyncAuthenticator {
-                serverSupportedCertificateTypes = authenticator.supportedCertificateTypes
-            } else if case .offer(let availableCertTypes) = PeerCertificateBundle.availableCertificateTypes {
-                serverSupportedCertificateTypes = availableCertTypes
-            }
-
-            var serverSupportedClientCertificateTypes: [CertificateType] = []
-            if case .offer(let verifyCertTypes) = PeerCertificateBundle.verificationCertificateTypes {
-                serverSupportedClientCertificateTypes = verifyCertTypes
-            }
-
             // TODO: add server config for signature algorithms, certificate types
             var clientHelloVerifier = ClientHelloVerifier(
                 serverSupportedGroups: [.x25519MLKEM768, .secp384, .x25519],
                 serverSupportedSignatureAlgs: [.ecdsa_secp256r1_sha256],
-                serverSupportedCertificateTypes: serverSupportedCertificateTypes,
-                serverSupportedClientCertificateTypes: serverSupportedClientCertificateTypes,
+                providableServerCertificateTypes: idleState.configuration.providableServerCertificateTypes,
+                verifiableClientCertificateTypes: idleState.configuration.verifiableClientCertificateTypes,
                 serverSupportedPSKKexModes: [.pskAndDHE],
                 serverSupportedPSKs: idleState.epsks ?? [],
                 useRawEPSKs: idleState.configuration.useRawEPSKs,
@@ -829,13 +786,13 @@ extension ServerHandshakeState {
             let negotiatedCipherSuite = try negotiateCipherSuite(clientHello.cipherSuites, serverSupportedCipherSuites)
 
             // Non-nil ONLY if the client sent a server certificate type extension and the server negotiated a common one
-            let negotiatedServerCertificateType = try clientHelloVerifier.negotiateServerCertificateType()
+            let negotiatedServerCertificateType = clientHelloVerifier.negotiatedServerCertificateType
 
             // Non-nil ONLY if the client sent a client_certificate_type extension and the server negotiated a common one
             let negotiatedClientCertificateType = try clientHelloVerifier.negotiateClientCertificateType()
             // if the server requires client auth and needs a raw public key then it needs this to be negotiated to raw public key
             if idleState.configuration.clientAuthRequired &&
-                clientHelloVerifier.serverSupportedClientCertificateTypes == [.rawPublicKey] {
+                clientHelloVerifier.verifiableClientCertificateTypes == [.rawPublicKey] {
                 guard let negotiatedClientCertificateType, negotiatedClientCertificateType == .rawPublicKey else {
                     logger.error("server requires the client to authenticate with raw public keys, but client did not indicate support. Failing.")
                     throw TLSError.handshakeFailure

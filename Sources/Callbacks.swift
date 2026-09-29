@@ -131,16 +131,17 @@ public typealias SignatureCallback = @Sendable (SignatureInfo) -> SignatureResul
 // Bundles the callbacks for the server to customize the certificate messages.
 @_spi(SwiftTLSProtocol)
 public struct AsyncAuthenticator: Sendable {
-    public var supportedCertificateTypes: [CertificateType]
+    /// The certificate types this peer can present to authenticate itself.
+    public var providableCertificateTypes: [CertificateType]
     public var getCertificateChain: CertificateCallback
     public var signTranscriptHash: SignatureCallback
 
-    public init(supportedCertificateTypes: [CertificateType], getCertificateChain: @escaping CertificateCallback, signTranscriptHash: @escaping  SignatureCallback) {
-        self.init(certificateTypes: supportedCertificateTypes, certificateCallback: getCertificateChain, signatureCallback: signTranscriptHash)
+    public init(providableCertificateTypes: [CertificateType], getCertificateChain: @escaping CertificateCallback, signTranscriptHash: @escaping  SignatureCallback) {
+        self.init(certificateTypes: providableCertificateTypes, certificateCallback: getCertificateChain, signatureCallback: signTranscriptHash)
     }
 
     private init(certificateTypes: [CertificateType], certificateCallback: @escaping CertificateCallback, signatureCallback: @escaping  SignatureCallback) {
-        self.supportedCertificateTypes = certificateTypes
+        self.providableCertificateTypes = certificateTypes
         self.getCertificateChain = certificateCallback
         self.signTranscriptHash = signatureCallback
     }
@@ -185,11 +186,12 @@ public typealias VerificationCallback = @Sendable (VerificationInfo) -> Verifica
 
 @_spi(SwiftTLSProtocol)
 public struct AsyncVerifier: Sendable {
-    public var availableCertificateTypes: [CertificateType]
+    /// The certificate types this peer is able to verify when presented by its peer.
+    public var verifiableCertificateTypes: [CertificateType]
     public var verifyHandshake: VerificationCallback
 
-    public init(availableCertificateTypes: [CertificateType], verificationCallback: @escaping  VerificationCallback) {
-        self.availableCertificateTypes = availableCertificateTypes
+    public init(verifiableCertificateTypes: [CertificateType], verificationCallback: @escaping  VerificationCallback) {
+        self.verifiableCertificateTypes = verifiableCertificateTypes
         self.verifyHandshake = verificationCallback
     }
 }

@@ -633,37 +633,21 @@ extension HandshakeState {
 
                     self.serverQUICTransportParameters = serverTransportParameters.opaqueOffer
                 case .serverCertificateType(.selection(let selectedType)):
-                    switch serverHelloState.configuration.verificationMethod {
-                    case .none:
+                    if case .none = serverHelloState.configuration.verificationMethod {
                         logger.error("server unexpectedly sent server_certificate_type extension")
                         throw TLSError.unsupportedExtension
-                    case .rawPublicKey:
-#if SWIFTTLS_SUPPORT_UNVERIFIED_X509
-                        // The unverified X509 path runs with this configuration and must be able to pass here.
-                        guard selectedType == .rawPublicKey || selectedType == .x509 else {
-                            logger.error("server reported unsupported certificate type")
-                            throw TLSError.negotiationFailed
-                        }
-#else
-                        guard selectedType == .rawPublicKey else {
-                            logger.error("server reported unsupported certificate type")
-                            throw TLSError.negotiationFailed
-                        }
-#endif
-                    case .certificateCallbacks(let asyncVerifier):
-                        let ourSupportedTypes = asyncVerifier.availableCertificateTypes
+                    }
 
-                        // Check that the selected type is supported.
-                        guard ourSupportedTypes.contains(selectedType) else {
-                            logger.error("server reported unsupported certificate type")
-                            throw TLSError.negotiationFailed
-                        }
+                    let verifiableTypes = serverHelloState.configuration.verifiableServerCertificateTypes
+                    guard verifiableTypes.contains(selectedType) else {
+                        logger.error("server reported unsupported certificate type")
+                        throw TLSError.negotiationFailed
+                    }
 
-                        // If the only supported type is x509 these extensions should be omitted.
-                        if ourSupportedTypes.count == 1 && ourSupportedTypes.first == .x509 {
-                            logger.error("server unexpectedly sent server_certificate_type extension")
-                            throw TLSError.negotiationFailed
-                        }
+                    // If the only supported type is x509 these extensions should be omitted.
+                    guard verifiableTypes != [.x509] else {
+                        logger.error("server unexpectedly sent server_certificate_type extension")
+                        throw TLSError.negotiationFailed
                     }
                     serverCertificateType = selectedType
                 case .clientCertificateType(.selection(let selectedType)):
