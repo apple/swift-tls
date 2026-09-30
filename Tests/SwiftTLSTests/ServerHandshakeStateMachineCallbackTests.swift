@@ -1254,21 +1254,28 @@ class ServerHandshakeStateMachineCallbackTests: XCTestCase {
         }
     }
 
-    // --  client auth negotiation failures --
+    // --  client auth negotiation --
 
-    // Configuring clientAuth support on a client with certificate callbacks produce an invalid configuration.
-    func testRequiredClientAuthProducesInvalidClientConfig() throws {
-        XCTAssertThrowsError(try HandshakeStateMachine(configuration: self.clientConfigRawPublicKeyRPKClientAuth))
+    // A client that authenticates with an RPK while verifying the server through
+    // certificate callbacks is a valid configuration: the two jobs are independent.
+    func testRPKClientAuthWithCertificateCallbacksProducesValidClientConfig() throws {
+        XCTAssertNoThrow(try HandshakeStateMachine(configuration: self.clientConfigRawPublicKeyRPKClientAuth))
     }
 
-    // Configuring clientAuth support on a server with certificate callbacks produce an invalid configuration.
+    // Requiring client auth with no way to verify the client is still an invalid configuration.
     func testRequiredClientAuthProducesInvalidServerConfig() throws {
         XCTAssertThrowsError(try ServerHandshakeStateMachine(configuration: self.serverConfigCertificateRequiresClientAuth))
     }
 
     // Positive test first. client: RPK auth, server RPK auth (clientAuthRequired). Callbacks for server auth, SwiftTLS client auth for client auth.
     func testRPKClientAuthWorks() throws {
-        throw XCTSkip("This currently produces invalid an configuration as client-auth is not supported.")
+        var clientStateMachine = try HandshakeStateMachine(configuration: self.clientConfigRawPublicKeyRPKClientAuth)
+        var serverStateMachine = try ServerHandshakeStateMachine(configuration: self.serverConfigRawPublicKeyRequiresRPKClientAuth)
+        try runSuccessfulHandshake(
+            clientStateMachine: &clientStateMachine,
+            serverStateMachine: &serverStateMachine,
+            clientAuthRequired: true
+        )
     }
 
     // Server requires client RPK auth, client doesn't send client_certificate_type

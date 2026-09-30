@@ -274,7 +274,8 @@ fileprivate func clientStateMachineFromTLSOptions(options: SwiftTLSOptions, forQ
             epsk: epsk,
             useRawEPSKs: false,
             enableEarlyData: options.enableEarlyData,
-            asyncVerifier: options.asyncVerifier
+            asyncVerifier: options.asyncVerifier,
+            asyncAuthenticator: options.asyncAuthenticator
         )
 
         var stateMachine: HandshakeStateMachine
@@ -361,7 +362,8 @@ fileprivate func serverStateMachineFromTLSOptions(options: SwiftTLSOptions, forQ
                 epsks: epsks,
                 clientAuthRequired: options.clientAuthRequired,
                 enableEarlyData: options.enableEarlyData,
-                asyncAuthenticator: options.asyncAuthenticator
+                asyncAuthenticator: options.asyncAuthenticator,
+                asyncVerifier: options.asyncVerifier
             )
         return try ServerHandshakeStateMachine(configuration: configuration)
     } catch {
