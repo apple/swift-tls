@@ -206,6 +206,58 @@ class SwiftTLSProtocolTests: XCTestCase {
         XCTAssertEqual(server.writeEncryptionLevel, .application)
     }
 
+    /// A peer that closes its write side in the same flight as its last handshake message leaves
+    /// the handshake complete and the read side closed at the same time.
+    ///
+    /// `state` can only report one of those, and reports `.readclosed`, so a consumer watching for
+    /// `.connected` to learn that the handshake finished never sees it. `isHandshakeComplete`
+    /// answers that question on its own and has to stay true here, otherwise the data the
+    /// handshake protected is never handed to the application.
+    func testHandshakeCompleteWithCloseNotifyInSameFlight() throws {
+        let clientOptions = defaultClientOptions(quic: false)
+        let serverOptions = defaultServerOptions(quic: false)
+
+        var client = try SwiftTLSHandshakeAndRecordManager(options: clientOptions, isServer: false)
+        var server = try SwiftTLSHandshakeAndRecordManager(options: serverOptions, isServer: true)
+
+        // Run the handshake up to the point where only the client's last flight is outstanding.
+        try client.startHandshake()
+        guard var clientHello = client.getOutput(numBytes: client.outgoingBytesCount) else {
+            XCTFail("no client hello")
+            return
+        }
+        try clientHello.withUnsafeMutableBytes { try server.processNetworkData(networkDataIn: $0) }
+        guard var serverFlight = server.getOutput(numBytes: server.outgoingBytesCount) else {
+            XCTFail("no server flight")
+            return
+        }
+        try serverFlight.withUnsafeMutableBytes { try client.processNetworkData(networkDataIn: $0) }
+        XCTAssertTrue(client.isHandshakeComplete, "client should be through its handshake")
+
+        // The client's remaining flight, its application data, and its close all go out together,
+        // which is what an application that writes once and closes produces.
+        let payload = Array("hello".utf8)
+        try client.addApplicationData(bytes: payload)
+        try client.sendCloseNotify()
+        guard var clientFlight = client.getOutput(numBytes: client.outgoingBytesCount) else {
+            XCTFail("no client flight")
+            return
+        }
+        try clientFlight.withUnsafeMutableBytes { try server.processNetworkData(networkDataIn: $0) }
+
+        XCTAssertTrue(
+            server.isHandshakeComplete,
+            "the server read the client's Finished, so its handshake is complete"
+        )
+        XCTAssertEqual(server.state, .readclosed, "the client's close closed the read side")
+        XCTAssertEqual(
+            server.getAvailableApplicationData(numBytes: server.availableApplicationDataLength)
+                .map { [UInt8]($0) },
+            payload,
+            "the data the handshake protected has to be readable"
+        )
+    }
+
     func runHandshakerHappyPath_NoEarlyData_MutualRPK(clientOptions: SwiftTLSOptions, serverOptions: SwiftTLSOptions) throws {
         let server = SwiftTLSServerHandshaker()
         XCTAssertNil(try server.setupHandshake(options: serverOptions))
