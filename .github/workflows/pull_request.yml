@@ -16,7 +16,8 @@ jobs:
       linux_build_command: |
         swift test -c release
       enable_windows_checks: false
-      enable_android_sdk_build: false
+      enable_android_sdk_build: true
+      enable_android_sdk_checks: true
       enable_embedded_wasm_sdk_build: false
       enable_linux_static_sdk_build: false
   soundness:
