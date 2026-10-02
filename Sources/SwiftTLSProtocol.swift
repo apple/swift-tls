@@ -825,7 +825,15 @@ public struct SwiftTLSHandshakeAndRecordManager: ~Copyable {
         try processNetworkData(networkDataIn: networkDataIn.bytes)
     }
 
-    public var isHandshakeComplete: Bool { state == .connected }
+    /// Whether the handshake has finished.
+    ///
+    /// This reports the handshake on its own, not the connection's state. `state` folds several
+    /// facts into one value and reports `.readclosed` or `.disconnected` ahead of `.connected`, so
+    /// a peer that closes its write side in the same flight as its last handshake message would
+    /// otherwise make a handshake that did complete look as though it never had.
+    public var isHandshakeComplete: Bool {
+        recordHandler.handshakeStarted && recordHandler.handshakeComplete
+    }
 
     public var errorCode: Int32 { errorCodeFromLatestError(latestError) }
 
