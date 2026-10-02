@@ -153,7 +153,7 @@ struct TLSRecordParser: ~Copyable {
                 throw TLSError.handshakeUnexpectedMessage
             }
             if contentLength == 1 {
-                let byte = content.bytes.unsafeLoad(as: UInt8.self)
+                let byte = content.bytes[0]
                 if byte == 1 {
                     logger.info("got a change cipher spec message with value 0x01, ignoring")
                     changeCipherSpecParsed = true
