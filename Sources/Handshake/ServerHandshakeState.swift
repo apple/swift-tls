@@ -72,6 +72,9 @@ enum ServerHandshakeState {
     /// The `Certificate` message has been read from the client.
     case clientCertificate(ClientCertificateState)
 
+    /// The server is awaiting the result of verifying the client's certificate.
+    case awaitingClientVerification(AwaitingClientVerificationState)
+
     /// The `CertificateVerify` message has been read from the client.
     case clientCertificateVerify(ClientCertificateVerifyState)
 
@@ -254,13 +257,80 @@ enum ServerHandshakeState {
         }
     }
 
-    mutating func receivedClientCertificateVerify(_ clientCertificateVerify: CertificateVerify, bytes: ByteBuffer) throws(TLSError) {
-        switch self {
-        case .clientCertificate(let state):
-            let newState = try ClientCertificateVerifyState.init(originalState: state, clientCertificateVerify: clientCertificateVerify, clientCertificateVerifyBytes: bytes)
-            self = .clientCertificateVerify(newState)
-        default:
+    mutating func receivedClientCertificateVerify(
+        _ clientCertificateVerify: CertificateVerify,
+        bytes: ByteBuffer,
+        deliverResultCallback: (@Sendable (PendingAsyncResult) -> Void)?
+    ) throws(TLSError) -> AuthenticationResult {
+        guard case .clientCertificate(let state) = self else {
             preconditionFailure()
+        }
+
+        switch state.configuration.verificationMethod {
+        case .rawPublicKey(let validPublicKeys):
+            guard try state.clientCertificates.verifyClientCertificateVerifySignature(
+                message: clientCertificateVerify,
+                validKeys: validPublicKeys,
+                keyScheduler: state.keyScheduler)
+            else {
+                logger.error("certificate verification failed")
+                throw TLSError.certificateError
+            }
+            logger.info("client certificate trusted")
+            self = .clientCertificateVerify(
+                try ClientCertificateVerifyState.verifiedPeer(originalState: state, clientCertificateVerifyBytes: bytes)
+            )
+            return .finished
+
+        case .certificateCallbacks(let asyncVerifier):
+            guard let certificates = try? state.clientCertificates.exportList() else {
+                logger.error("exporting certificates failed")
+                throw TLSError.certificateError
+            }
+            // The signed content, not a bare hash. Must be read before the
+            // CertificateVerify message is added to the transcript.
+            let transcriptHash = try state.keyScheduler.dataToSignInClientCertificateVerify().readableBytesView
+            var verificationInfo = VerificationInfo(
+                certificates: certificates,
+                signatureAlgorithm: clientCertificateVerify.algorithm.rawValue,
+                signature: clientCertificateVerify.signature.readableBytesView,
+                transcriptHash: transcriptHash
+            )
+            if let deliverCallback = deliverResultCallback {
+                verificationInfo.deliverResult = { result in
+                    deliverCallback(.verification(result))
+                }
+            }
+
+            switch asyncVerifier.verifyHandshake(verificationInfo) {
+            case .valid:
+                logger.info("client certificate trusted")
+                self = .clientCertificateVerify(
+                    try ClientCertificateVerifyState.verifiedPeer(originalState: state, clientCertificateVerifyBytes: bytes)
+                )
+                return .finished
+            case .invalid(let reason):
+                logger.error("client certificate verification failed: \(reason)")
+                throw TLSError.certificateError
+            case .waiting:
+                guard verificationInfo.deliverResult != nil else {
+                    logger.error("verification callback returned .waiting but no deliverResultCallback is set")
+                    throw TLSError.handshakeError
+                }
+                self = .awaitingClientVerification(
+                    AwaitingClientVerificationState(
+                        originalState: state,
+                        asyncVerifier: asyncVerifier,
+                        verificationInfo: verificationInfo,
+                        clientCertificateVerifyBytes: bytes
+                    )
+                )
+                return .delayed
+            }
+
+        case .none:
+            logger.error("read a client certificate verify but the server is not configured to verify the client")
+            throw TLSError.internalError(reason: "client authentication is not configured")
         }
     }
 }
@@ -790,11 +860,12 @@ extension ServerHandshakeState {
 
             // Non-nil ONLY if the client sent a client_certificate_type extension and the server negotiated a common one
             let negotiatedClientCertificateType = try clientHelloVerifier.negotiateClientCertificateType()
-            // if the server requires client auth and needs a raw public key then it needs this to be negotiated to raw public key
-            if idleState.configuration.clientAuthRequired &&
-                clientHelloVerifier.verifiableClientCertificateTypes == [.rawPublicKey] {
-                guard let negotiatedClientCertificateType, negotiatedClientCertificateType == .rawPublicKey else {
-                    logger.error("server requires the client to authenticate with raw public keys, but client did not indicate support. Failing.")
+            // When requiring client auth, the type the client will send must be one we can verify.
+            // A client that sent no extension will send x509, per RFC 7250.
+            if idleState.configuration.clientAuthRequired {
+                let expectedClientCertificateType = negotiatedClientCertificateType ?? .x509
+                guard clientHelloVerifier.verifiableClientCertificateTypes.contains(expectedClientCertificateType) else {
+                    logger.error("server cannot verify the negotiated client certificate type. Failing.")
                     throw TLSError.handshakeFailure
                 }
             }
@@ -1433,6 +1504,41 @@ extension ServerHandshakeState {
         }
     }
 
+    struct AwaitingClientVerificationState {
+        var configuration: ServerHandshakeStateMachine.Configuration
+        var keyScheduler: ServerSessionKeyManager<SHA384>
+        let clientQUICTransportParameters: ByteBuffer?
+        let selectedALPN: ApplicationLayerProtocol?
+        let negotiatedCiphersuite: CipherSuite
+        let earlyDataPermitted: Bool
+        let negotiatedGroup: NamedGroup?
+        let epskNegotiated: Bool
+        let pskNegotiationAttempted: Bool
+        let asyncVerifier: AsyncVerifier
+        var verificationInfo: VerificationInfo
+        var clientCertificateVerifyBytes: ByteBuffer
+
+        init(
+            originalState clientCertificateState: ClientCertificateState,
+            asyncVerifier: AsyncVerifier,
+            verificationInfo: VerificationInfo,
+            clientCertificateVerifyBytes: ByteBuffer
+        ) {
+            self.configuration = clientCertificateState.configuration
+            self.keyScheduler = clientCertificateState.keyScheduler
+            self.clientQUICTransportParameters = clientCertificateState.clientQUICTransportParameters
+            self.selectedALPN = clientCertificateState.selectedALPN
+            self.negotiatedCiphersuite = clientCertificateState.negotiatedCiphersuite
+            self.earlyDataPermitted = clientCertificateState.earlyDataPermitted
+            self.negotiatedGroup = clientCertificateState.negotiatedGroup
+            self.epskNegotiated = clientCertificateState.epskNegotiated
+            self.pskNegotiationAttempted = clientCertificateState.pskNegotiationAttempted
+            self.asyncVerifier = asyncVerifier
+            self.verificationInfo = verificationInfo
+            self.clientCertificateVerifyBytes = clientCertificateVerifyBytes
+        }
+    }
+
     struct ClientCertificateVerifyState {
         var configuration: ServerHandshakeStateMachine.Configuration
         var keyScheduler: ServerSessionKeyManager<SHA384>
@@ -1444,16 +1550,7 @@ extension ServerHandshakeState {
         let epskNegotiated: Bool
         let pskNegotiationAttempted: Bool
 
-        init(originalState clientCertificateState: ClientCertificateState, clientCertificateVerify: CertificateVerify, clientCertificateVerifyBytes: ByteBuffer) throws(TLSError) {
-            guard try clientCertificateState.clientCertificates.verifyClientCertificateVerifySignature(
-                message: clientCertificateVerify,
-                validKeys: clientCertificateState.configuration.validPeerPublicKeys ?? [],
-                keyScheduler: clientCertificateState.keyScheduler)
-            else {
-                logger.error("certificate verification failed")
-                throw TLSError.certificateError
-            }
-            logger.info("client certificate trusted")
+        private init(originalState clientCertificateState: ClientCertificateState, clientCertificateVerifyBytes: ByteBuffer) throws(TLSError) {
             self.configuration = clientCertificateState.configuration
             self.keyScheduler = clientCertificateState.keyScheduler
             self.clientQUICTransportParameters = clientCertificateState.clientQUICTransportParameters
@@ -1464,6 +1561,27 @@ extension ServerHandshakeState {
             self.epskNegotiated = clientCertificateState.epskNegotiated
             self.pskNegotiationAttempted = clientCertificateState.pskNegotiationAttempted
             try keyScheduler.addPostFinishedMessageToTransportHash(clientCertificateVerifyBytes)
+        }
+
+        private init(originalState awaitingState: AwaitingClientVerificationState, clientCertificateVerifyBytes: ByteBuffer) throws(TLSError) {
+            self.configuration = awaitingState.configuration
+            self.keyScheduler = awaitingState.keyScheduler
+            self.clientQUICTransportParameters = awaitingState.clientQUICTransportParameters
+            self.selectedALPN = awaitingState.selectedALPN
+            self.negotiatedCiphersuite = awaitingState.negotiatedCiphersuite
+            self.earlyDataPermitted = awaitingState.earlyDataPermitted
+            self.negotiatedGroup = awaitingState.negotiatedGroup
+            self.epskNegotiated = awaitingState.epskNegotiated
+            self.pskNegotiationAttempted = awaitingState.pskNegotiationAttempted
+            try keyScheduler.addPostFinishedMessageToTransportHash(clientCertificateVerifyBytes)
+        }
+
+        static func verifiedPeer(originalState: ClientCertificateState, clientCertificateVerifyBytes: ByteBuffer) throws(TLSError) -> ClientCertificateVerifyState {
+            return try .init(originalState: originalState, clientCertificateVerifyBytes: clientCertificateVerifyBytes)
+        }
+
+        static func verifiedPeer(originalState: AwaitingClientVerificationState, clientCertificateVerifyBytes: ByteBuffer) throws(TLSError) -> ClientCertificateVerifyState {
+            return try .init(originalState: originalState, clientCertificateVerifyBytes: clientCertificateVerifyBytes)
         }
     }
 
@@ -1567,6 +1685,8 @@ extension ServerHandshakeState: CustomStringConvertible {
             return "awaitingSignature"
         case .clientCertificateVerify:
             return "clientCertificateVerify"
+        case .awaitingClientVerification:
+            return "awaitingClientVerification"
         case .readyForData:
             return "readyForData"
         }
