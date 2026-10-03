@@ -145,6 +145,8 @@ struct ServerHandshakeStateMachine {
         case .clientCertificate:
             // read client certificate verify message
             return try self.handleReadClientCertificateVerify(incomingBytes: &incomingBytes)
+        case .awaitingClientVerification:
+            return try self.handleAsyncClientVerificationResult()
         case .clientCertificateVerify:
             // read clientFinished
             return try self.handleReadClientFinished(incomingBytes: &incomingBytes)
@@ -225,6 +227,8 @@ struct ServerHandshakeStateMachine {
             return clientCert.clientQUICTransportParameters
         case .clientCertificateVerify(let clientCertVerify):
             return clientCertVerify.clientQUICTransportParameters
+        case .awaitingClientVerification(let awaitingClientVerification):
+            return awaitingClientVerification.clientQUICTransportParameters
         case .readyForData(let ready):
             return ready.clientQUICTransportParameters
         }
@@ -296,6 +300,8 @@ struct ServerHandshakeStateMachine {
             return clientCert.negotiatedCiphersuite.rawValue
         case .clientCertificateVerify(let clientCertVerify):
             return clientCertVerify.negotiatedCiphersuite.rawValue
+        case .awaitingClientVerification(let awaitingClientVerification):
+            return awaitingClientVerification.negotiatedCiphersuite.rawValue
         case .readyForData(let ready):
             return ready.negotiatedCiphersuite.rawValue
         }
@@ -330,6 +336,8 @@ struct ServerHandshakeStateMachine {
             return clientCert.epskNegotiated
         case .clientCertificateVerify(let clientCertVerify):
             return clientCertVerify.epskNegotiated
+        case .awaitingClientVerification(let awaitingClientVerification):
+            return awaitingClientVerification.epskNegotiated
         case .readyForData(let ready):
             return ready.epskNegotiated
         }
@@ -364,6 +372,8 @@ struct ServerHandshakeStateMachine {
             return clientCert.pskNegotiationAttempted
         case .clientCertificateVerify(let clientCertVerify):
             return clientCertVerify.pskNegotiationAttempted
+        case .awaitingClientVerification(let awaitingClientVerification):
+            return awaitingClientVerification.pskNegotiationAttempted
         case .readyForData(let ready):
             return ready.pskNegotiationAttempted
         }
@@ -399,6 +409,8 @@ struct ServerHandshakeStateMachine {
             return clientCert.negotiatedGroup?.metadataDescription
         case .clientCertificateVerify(let clientCertVerify):
             return clientCertVerify.negotiatedGroup?.metadataDescription
+        case .awaitingClientVerification(let awaitingClientVerification):
+            return awaitingClientVerification.negotiatedGroup?.metadataDescription
         case .readyForData(let ready):
             return ready.negotiatedGroup?.metadataDescription
         }
@@ -434,6 +446,8 @@ struct ServerHandshakeStateMachine {
             return clientCert.earlyDataPermitted
         case .clientCertificateVerify(let clientCertVerify):
             return clientCertVerify.earlyDataPermitted
+        case .awaitingClientVerification(let awaitingClientVerification):
+            return awaitingClientVerification.earlyDataPermitted
         case .readyForData(let ready):
             return ready.earlyDataPermitted
         }
@@ -468,6 +482,8 @@ struct ServerHandshakeStateMachine {
             return false
         case .clientCertificate:
             return false
+        case .awaitingClientVerification:
+            return true
         case .clientCertificateVerify:
             return false
         case .readyForData:
@@ -500,6 +516,8 @@ struct ServerHandshakeStateMachine {
         case .serverFinished:
             return false
         case .clientCertificate:
+            return false
+        case .awaitingClientVerification:
             return false
         case .clientCertificateVerify:
             return false
@@ -919,9 +937,55 @@ extension ServerHandshakeStateMachine {
         }
         logger.info("server got client certificate verify")
 
-        // transition to clientCertificateVerify state
-        try self.state.receivedClientCertificateVerify(clientCertificateVerify, bytes: message.messageBytes)
-        return .continueOkay
+        // transition to clientCertificateVerify state, or wait for an async verification result
+        switch try self.state.receivedClientCertificateVerify(
+            clientCertificateVerify,
+            bytes: message.messageBytes,
+            deliverResultCallback: self.deliverResultCallback
+        ) {
+        case .finished:
+            return .continueOkay
+        case .delayed:
+            return .waitingForBytes
+        }
+    }
+
+    private mutating func handleAsyncClientVerificationResult() throws(TLSError) -> StepResult {
+        // Make sure this is called from the correct state.
+        guard case .awaitingClientVerification(let state) = self.state else {
+            let logDescription = self.stateDescription
+            logger.error("invalid state for handleAsyncClientVerificationResult: \(logDescription)")
+            throw TLSError.handshakeError
+        }
+
+        // Collect async result to continue handshake.
+        guard let pending = self.pendingAsyncResult else {
+            logger.debug("server called continue handshake without setting async result")
+            return .waitingForBytes
+        }
+        self.pendingAsyncResult = nil
+        guard case .verification(let verificationResult) = pending.asyncResult else {
+            throw TLSError.internalError(reason: "Unexpected async result type in awaitingClientVerification")
+        }
+
+        logger.info("server got async client verification result")
+
+        switch verificationResult {
+        case .valid:
+            logger.info("client certificate trusted")
+            self.state = .clientCertificateVerify(
+                try ServerHandshakeState.ClientCertificateVerifyState.verifiedPeer(
+                    originalState: state,
+                    clientCertificateVerifyBytes: state.clientCertificateVerifyBytes
+                )
+            )
+            return .continueOkay
+        case .invalid(let reason):
+            logger.error("client certificate verification failed: \(reason)")
+            throw TLSError.certificateError
+        case .waiting:
+            preconditionFailure("pending result should not be .waiting")
+        }
     }
 
     private mutating func handleReadClientFinished(incomingBytes: inout InputBuffer) throws(TLSError) -> StepResult {

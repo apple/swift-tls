@@ -230,6 +230,34 @@ final class ServerCallbackFixtures: Sendable {
         return .valid
     }
 
+    // Authorizes the *client's* raw public key. Mirror of `verificationCallbackRawPublicKey`,
+    // which authorizes the server's.
+    @Sendable func verificationCallbackClientRawPublicKey(info: VerificationInfo) -> VerificationResult {
+        self.authenticationCallbackCalled.withLock { $0 = true }
+        guard info.signatureAlgorithm == SignatureScheme.ecdsa_secp256r1_sha256.rawValue else {
+            return .invalid(reason: "unsupported signature algorithm")
+        }
+        guard info.certificates.type == .rawPublicKey else {
+            return .invalid(reason: "unsupported certificate type")
+        }
+        guard info.certificates.entries.count == 1 else {
+            return .invalid(reason: "only expected one key")
+        }
+        guard let key: P256.Signing.PublicKey = try? P256.Signing.PublicKey(derRepresentation: info.certificates.entries[0]) else {
+            return .invalid(reason: "failed to load key")
+        }
+        guard let signature = try? P256.Signing.ECDSASignature(derRepresentation: info.signature) else {
+            return .invalid(reason: "failed to load signature")
+        }
+        guard key.isValidSignature(signature, for: info.transcriptHash) else {
+            return .invalid(reason: "invalid signature")
+        }
+        guard key.rawRepresentation == self.clientAuthKey.publicKey.rawRepresentation else {
+            return .invalid(reason: "not authorized")
+        }
+        return .valid
+    }
+
     @Sendable func verificationCallbackCertificate(info: VerificationInfo) -> VerificationResult {
         self.authenticationCallbackCalled.withLock { $0 = true }
         guard info.certificates.type == .x509 else {
@@ -399,6 +427,19 @@ class ServerHandshakeStateMachineCallbackTests: XCTestCase {
                 alpn: ["proto A", "proto B"],
                 clientAuthRequired: true,
                 asyncAuthenticator: AsyncAuthenticator(providableCertificateTypes: [.x509], getCertificateChain: self.fixtures.provideCertificate(certInfo:), signTranscriptHash: self.fixtures.signCertificate(_:)),
+            )
+    }
+
+    // Fully delegated server: callbacks for its own identity (job A) and callbacks for
+    // verifying the client (job B).
+    var serverConfigCallbacksRequiresRPKClientAuthViaCallbacks: ServerHandshakeStateMachine.Configuration {
+        ServerHandshakeStateMachine
+            .Configuration(
+                quicTransportParameters: ByteBuffer("some opaque bytes"),
+                alpn: ["proto A", "proto B"],
+                clientAuthRequired: true,
+                asyncAuthenticator: AsyncAuthenticator(providableCertificateTypes: [.rawPublicKey], getCertificateChain: self.fixtures.provideRawPublicKey(certInfo:), signTranscriptHash: self.fixtures.signRawPublicKey(_:)),
+                asyncVerifier: AsyncVerifier(verifiableCertificateTypes: [.rawPublicKey], verificationCallback: self.fixtures.verificationCallbackClientRawPublicKey(info:))
             )
     }
 
@@ -1276,6 +1317,19 @@ class ServerHandshakeStateMachineCallbackTests: XCTestCase {
             serverStateMachine: &serverStateMachine,
             clientAuthRequired: true
         )
+    }
+
+    // The server verifies the client's raw public key through its `AsyncVerifier` rather than
+    // the built-in trusted key list.
+    func testClientAuthVerifiedThroughCallbacks() throws {
+        var clientStateMachine = try HandshakeStateMachine(configuration: self.clientConfigRawPublicKeyRPKClientAuth)
+        var serverStateMachine = try ServerHandshakeStateMachine(configuration: self.serverConfigCallbacksRequiresRPKClientAuthViaCallbacks)
+        try runSuccessfulHandshake(
+            clientStateMachine: &clientStateMachine,
+            serverStateMachine: &serverStateMachine,
+            clientAuthRequired: true
+        )
+        XCTAssertTrue(self.fixtures.authenticationCallbackCalled.withLock { $0 })
     }
 
     // Server requires client RPK auth, client doesn't send client_certificate_type
