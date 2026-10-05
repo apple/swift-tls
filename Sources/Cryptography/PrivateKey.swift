@@ -123,7 +123,7 @@ public typealias SwiftTLSSignatureScheme = UInt16
 /// A callback that accepts the bytes to sign and the negotiated TLS signature scheme,
 /// and returns the signature, or `nil` when signing fails.
 @_spi(SwiftTLSOptions)
-public typealias SwiftTLSRefKeySignCallback = (Data, SwiftTLSSignatureScheme) -> Data?
+public typealias SwiftTLSRefKeySignCallback = @Sendable (Data, SwiftTLSSignatureScheme) -> Data?
 
 /// The underlying key types supported by `SwiftTLSOpaqueReferenceKey`.
 enum SwiftTLSOpaqueReferenceKeyType: Sendable {
@@ -135,7 +135,7 @@ enum SwiftTLSOpaqueReferenceKeyType: Sendable {
 @_spi(SwiftTLSOptions)
 // Availability due to `CryptoKit`'s `P256.Signing.PublicKey`
 @available(macOS 11, iOS 14, tvOS 14, watchOS 7, *)
-public struct SwiftTLSOpaqueReferenceKey {
+public struct SwiftTLSOpaqueReferenceKey: Sendable {
     let publicKey: PublicKey
     let sign: SwiftTLSRefKeySignCallback
     let keyType: SwiftTLSOpaqueReferenceKeyType
