@@ -71,23 +71,27 @@ extension Nonce: Hashable {
 // The defaults are only correct on the send path; receivers must pass the
 // header as it arrived (RFC 9846 Appendix E).
 //
-// Availability due to `RawSpan`
+// Availability due to `Swift`'s `InlineArray`
 @available(SwiftTLS 0.1.0, *)
 func additionalData(
     contentType: ContentType = TLSCiphertext.opaqueType,
     protocolVersion: ProtocolVersion = TLSCiphertext.pv,
     ciphertextLength: Int
-) -> Data {
-    var ad = ByteBuffer()
-    ad.writeContentType(contentType)
-    ad.writeProtocolVersion(protocolVersion)
-    ad.writeInteger(UInt16(ciphertextLength), as: UInt16.self)
+) -> InlineArray<5, UInt8> {
+    let length = UInt16(ciphertextLength)
+    let ad: InlineArray<5, UInt8> = [
+        contentType.rawValue,
+        protocolVersion.major,
+        protocolVersion.minor,
+        UInt8(truncatingIfNeeded: length >> 8),
+        UInt8(truncatingIfNeeded: length),
+    ]
     #if SWIFTTLS_EXCLAVECORE
     logger.debug("additional data: content type = \(String(describing: contentType)), protocol version = \(String(describing: protocolVersion)), length = \(ciphertextLength)")
     #else
     logger.debug("additional data: content type = \(contentType), protocol version = \(protocolVersion), length = \(ciphertextLength)")
     #endif
-    return ad.readableBytesView
+    return ad
 }
 
 // Availability due to `RawSpan`
@@ -249,9 +253,12 @@ struct TLSRecordProtector: ~Copyable {
         // additional_data = TLSCiphertext.opaque_type || TLSCiphertext.legacy_record_version || TLSCiphertext.length
         let ad = additionalData(ciphertextLength: ciphertextLength)
 
-        let protectedRecord = try ad.withBytes { (adBuffer) throws(TLSError) in
-            try TLSCiphertext(writeKey: writeKey, nonce: nonce, innerPlaintext: innerPlaintext, additionalData: adBuffer)
-        }
+        let protectedRecord = try TLSCiphertext(
+            writeKey: writeKey,
+            nonce: nonce,
+            innerPlaintext: innerPlaintext,
+            additionalData: ad.span.bytes
+        )
 
         guard UInt64.max - 1 >= self.writeSequenceNumber else {
             throw TLSError.internalError(reason: "write sequence number overflow")

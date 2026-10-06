@@ -354,7 +354,7 @@ struct TLSRecordHandler: ~Copyable {
                                  label: "iv",
                                  context: [],
                                  length: TLSRecordProtector.IVlengthBytes)
-        return (newKey, [UInt8](newIV.withUnsafeBytes { Data($0) }))
+        return (newKey, newIV.withUnsafeBytes { [UInt8]($0) })
     }
 
     private mutating func updateEncryptionSecrets(_ partialHandshakeResult: PartialHandshakeResult) throws(TLSError) {

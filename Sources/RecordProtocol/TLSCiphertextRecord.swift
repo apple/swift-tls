@@ -115,35 +115,31 @@ struct TLSCiphertext: TLSRecordProtocol, Hashable {
             ciphertextLength: encryptedRecord.byteCount
         )
 
-        /// Copy the ciphertext and tag into a new array.
-        var message = [UInt8](unsafeUninitializedCapacity: encryptedRecord.byteCount) { buffer, initializedCount in
-            encryptedRecord.withUnsafeBytes { encryptedBuffer in
-                UnsafeMutableRawBufferPointer(buffer).copyMemory(from: encryptedBuffer)
-            }
-            initializedCount = encryptedRecord.byteCount
+        // Both TLS 1.3 AEADs (AES-GCM and ChaCha20-Poly1305) have a 16-byte
+        // tag, so we can use the stack storage below.
+        guard aeadExpansionLength == TLSRecordProtector.aesTagLengthBytes else {
+            throw TLSError.internalError(reason: "unsupported AEAD expansion length \(aeadExpansionLength)")
         }
 
-        // Decrypt in-place.
         let ciphertextLength = encryptedRecord.byteCount - aeadExpansionLength
+
+        // Copy the ciphertext into its own storage so it can be decrypted in
+        // place. The tag is copied into stack storage so that it doesn't
+        // overlap the buffer being decrypted.
+        var message = [UInt8](copying: encryptedRecord.extracting(0..<ciphertextLength))
+        let tag = [16 of UInt8](copying: encryptedRecord.extracting(ciphertextLength..<encryptedRecord.byteCount))
+
         do {
             try TLSError.wrappingCryptoError { () throws(CryptoKitMetaError) in
-                try message.withUnsafeMutableBytes { (messageBuffer) -> Result<(), CryptoKitMetaError> in
-                    var ciphertextSpan = UnsafeMutableRawBufferPointer(
-                        rebasing: messageBuffer[0..<ciphertextLength]
-                    ).mutableBytes
-                    let tagSpan = UnsafeMutableRawBufferPointer(
-                        rebasing: messageBuffer[ciphertextLength..<encryptedRecord.byteCount]
-                    ).mutableBytes
-
-                    return ad.withUnsafeBytes { (adBytes) -> Result<(), CryptoKitMetaError> in
-                        do throws(CryptoKitMetaError) {
-                            try AES.GCM.open(inPlace: &ciphertextSpan, using: peerWriteKey, nonce: .init(copying: nonce.bytes), authenticating: adBytes.bytes, tag: tagSpan.bytes)
-                            return .success(())
-                        } catch {
-                            return .failure(error)
-                        }
-                    }
-                }.get()
+                var messageSpan = message.mutableSpan
+                var ciphertextSpan = messageSpan.mutableBytes
+                try AES.GCM.open(
+                    inPlace: &ciphertextSpan,
+                    using: peerWriteKey,
+                    nonce: .init(copying: nonce.bytes),
+                    authenticating: ad.span.bytes,
+                    tag: tag.span.bytes
+                )
             }
         } catch {
             // RFC 9846 §5.2: "If decryption fails, the receiver MUST terminate
@@ -222,40 +218,24 @@ struct TLSInnerPlaintext: ~Escapable {
     func protect(writeKey: SymmetricKey, nonce: Nonce, additionalData: RawSpan) throws(TLSError) -> [UInt8] {
         // Allocate storage for the ciphertext + content + padding + tag.
         let tagSize = TLSRecordProtector.aesTagLengthBytes
-        var storage = [UInt8](unsafeUninitializedCapacity: length + tagSize) { buffer, initializedCount in
-            self.content.withUnsafeBytes { contentBuffer in
-                UnsafeMutableRawBufferPointer(buffer).copyMemory(from: contentBuffer)
-            }
-            buffer[content.byteCount] = self.contentType.rawValue
-            buffer[(content.byteCount + 1)...].initialize(repeating: 0)
-            initializedCount = length + tagSize
+        var storage = [UInt8](capacity: self.length + tagSize) { output in
+            output.append(contentsOf: self.content)
+            output.append(self.contentType.rawValue)
+            output.append(repeating: 0, count: self.paddingLength + tagSize)
         }
 
-        try TLSError.wrappingCryptoError { () throws(CryptoKitMetaError) in
-            try storage.withUnsafeMutableBytes { (storageBuffer) -> Result<(), CryptoKitMetaError> in
-                let messageStorage = UnsafeMutableRawBufferPointer(rebasing: storageBuffer[..<length])
-                var messageBytes = messageStorage.mutableBytes
-                let tagStorage = UnsafeMutableRawBufferPointer(rebasing: storageBuffer[length...])
-                var tagSpan = tagStorage.mutableBytes
-                precondition(tagStorage.count == tagSize)
-                do throws (CryptoKitMetaError) {
-                    try tagSpan.withUnsafeMutableBytes { tagBuffer throws(CryptoKitMetaError) in
-                        var tagBytes = OutputRawSpan(buffer: tagBuffer, initializedCount: 0)
-                        try AES.GCM
-                            .seal(
-                                inPlace: &messageBytes,
-                                using: writeKey,
-                                nonce: .init(copying: nonce.bytes),
-                                authenticating: additionalData,
-                                tag: &tagBytes
-                            )
-                        _ = tagBytes.finalize(for: tagBuffer)
-                    }
-                    return .success(())
-                } catch {
-                    return .failure(error)
-                }
-            }.get()
+        // Encrypt in place, writing the tag into the space reserved for it at
+        // the end of the same buffer.
+        try TLSError.wrappingCryptoError {
+            try storage.withUnsafeMutableOutputSplit(at: self.length) { message, tag in
+                try AES.GCM.seal(
+                    inPlace: &message,
+                    using: writeKey,
+                    nonce: .init(copying: nonce.bytes),
+                    authenticating: additionalData,
+                    tag: &tag
+                )
+            }
         }
 
         return storage
