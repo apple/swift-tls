@@ -68,6 +68,26 @@ public struct PeerOffer: Sendable, Hashable {
         self.serverName = clientHello.serverName
         self.alpns = clientHello.alpns
     }
+
+    // Information offered by the server in its `CertificateRequest`, used when this peer is
+    // the client presenting a certificate.
+    //
+    // `certificateTypes` holds a single entry: unlike a client reading a ClientHello, a client
+    // learns only the server's selection, never the full list the server would accept. The
+    // server name and application protocol are not echoed back, so they are supplied from
+    // this peer's own negotiated values.
+    @available(SwiftTLS 0.1.0, *)
+    init(
+        certificateRequestSignatureAlgorithms: [SignatureScheme],
+        certificateType: CertificateType,
+        serverName: String?,
+        alpn: ApplicationLayerProtocol?
+    ) {
+        self.certificateTypes = [certificateType]
+        self.signatureAlgorithms = certificateRequestSignatureAlgorithms.map { $0.rawValue }
+        self.serverName = serverName
+        self.alpns = alpn.map { [$0] }
+    }
 }
 
 // The result waiting indicates asynchronous work in the callback.

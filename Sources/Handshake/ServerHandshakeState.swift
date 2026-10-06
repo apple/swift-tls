@@ -166,6 +166,8 @@ enum ServerHandshakeState {
         switch self {
         case .serverEncryptedExtensions(let state):
             self = .awaitingCertificate(AwaitingCertificateState(originalState: state, asyncAuthenticator: asyncAuthenticator, certInfo: certInfo))
+        case .serverCertificateRequest(let state):
+            self = .awaitingCertificate(AwaitingCertificateState(originalState: state, asyncAuthenticator: asyncAuthenticator, certInfo: certInfo))
         default:
             preconditionFailure()
         }
@@ -174,6 +176,10 @@ enum ServerHandshakeState {
     mutating func sendingServerCertificate(withCertificates certificates: [Data], authDetails: AuthenticationDetails) throws(TLSError) -> PartialHandshakeResult {
         switch self {
         case .serverEncryptedExtensions(let state):
+            let (newState, serverCertificateBytes) = try ServerCertificateState.sendingServerCertificate(originalState: state, withCertificates: certificates, authDetails: authDetails)
+            self = .serverCertificate(newState)
+            return PartialHandshakeResult(handshakeBytesToSend: serverCertificateBytes)
+        case .serverCertificateRequest(let state):
             let (newState, serverCertificateBytes) = try ServerCertificateState.sendingServerCertificate(originalState: state, withCertificates: certificates, authDetails: authDetails)
             self = .serverCertificate(newState)
             return PartialHandshakeResult(handshakeBytesToSend: serverCertificateBytes)

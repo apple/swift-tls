@@ -268,15 +268,6 @@ extension HandshakeStateMachine {
             }
         }
 
-        // TODO: remove once the client can present a certificate.
-        static func isImplemented(_ authentication: AuthenticationMethod, _ verification: VerificationMethod) -> Bool {
-            if case .certificateAuthCallbacks = authentication {
-                logger.error("CONFIGURATION: client authentication with certificate callbacks is not supported yet")
-                return false
-            }
-            return true
-        }
-
         init(
             serverName: String? = nil,
             quicTransportParameters: ByteBuffer? = nil,
@@ -311,8 +302,7 @@ extension HandshakeStateMachine {
                 self.authenticationMethod = authentication
                 self.verificationMethod = verification
 
-                guard Self.validate(authentication, verification),
-                      Self.isImplemented(authentication, verification) else {
+                guard Self.validate(authentication, verification) else {
                     self.validConfiguration = false
                     return
                 }

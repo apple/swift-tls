@@ -67,8 +67,20 @@ enum HandshakeState {
     /// available, transition to `serverCertificateVerify`.
     case awaitingVerification(AwaitingVerificationState)
 
-    /// The client has received the server's certificate verification
+    /// The client received the server's certificate verification
     case serverCertificateVerify(ServerCertificateVerifyState)
+
+    /// The client is awaiting the certificate data to include in its own `Certificate` message.
+    ///
+    /// Unlike the other awaiting states this one sits *inside* the client's second flight:
+    /// the server's Finished has been consumed, but no client bytes have been emitted yet.
+    case awaitingClientCertificate(AwaitingClientCertificateState)
+
+    /// The client is awaiting the signature to include in its own `CertificateVerify` message.
+    ///
+    /// The `Certificate` message has already been built and folded into the transcript, and is
+    /// held in `accumulated` until the rest of the flight can be produced.
+    case awaitingClientSignature(AwaitingClientSignatureState)
 
     /// The client has received `ServerFinished`, verified the server, and sent
     /// the client's second flight, which includes:
@@ -252,7 +264,7 @@ enum HandshakeState {
     /// Returns bytes for `ClientFinished`, or bytes for
     /// `Client Certificate | [Client Certificate Verify] | Client Finished`
     /// if client authentication with a certificate or RPK is requested.
-    mutating func receivedServerFinished(serverFinished: FinishedMessage, serverFinishedBytes: ByteBuffer, serializer: inout TLSMessageSerializer) throws(TLSError) -> PartialHandshakeResult {
+    mutating func receivedServerFinished(serverFinished: FinishedMessage, serverFinishedBytes: ByteBuffer, serializer: inout TLSMessageSerializer, deliverResultCallback: (@Sendable (PendingAsyncResult) -> Void)?) throws(TLSError) -> PartialHandshakeResult? {
         switch self {
         case .serverCertificateVerify(var state) where state.sendClientCertificateMessage:
             // process Server finished:
@@ -261,38 +273,11 @@ enum HandshakeState {
                 throw TLSError.negotiationFailed
             }
             try state.keyScheduler.postServerFinished(serverFinishedBytes: serverFinishedBytes)
-            var clientSecondFlightBuffer = ByteBuffer()
-            // send client certificate (empty or with cert)
-            var (newState, clientCertificate) = try ClientCertificateState.sendingClientCertificate(originalState: state)
-            clientSecondFlightBuffer.writeBuffer(&clientCertificate)
-            // if certificate msg non empty also send certificate verify
-            var (newerState, clientCertificateVerify) = try ClientCertificateVerifyState.sendingClientCertificateVerify(originalState: newState)
-            clientSecondFlightBuffer.writeBuffer(&clientCertificateVerify)
-            // send finished
-            var clientFinishedBuffer = ByteBuffer()
-            let clientFinished = try newerState.keyScheduler.clientFinishedPayload()
-            serializer.writeHandshakeMessage(.finished(.init(verifyData: ByteBuffer(bytes: clientFinished))), into: &clientFinishedBuffer)
-            try newerState.keyScheduler.postClientFinished(clientFinishedBytes: clientFinishedBuffer)
-
-            clientSecondFlightBuffer.writeBuffer(&clientFinishedBuffer)
-
-            let state = ReadyState(configuration: state.configuration,
-                             negotiatedCipherSuite: state.negotiatedCipherSuite,
-                             negotiatedGroup: state.negotiatedGroup,
-                             certificates: state.certificates,
-                             serverALPN: state.serverALPN,
-                             serverQUICTransportParameters: state.serverQUICTransportParameters,
-                             earlyDataAccepted: state.earlyDataAccepted,
-                             keyScheduler: newerState.keyScheduler,
-                             epskNegotiated: false,
-                             epskNegotiationAttempted: state.epskNegotiationAttempted)
-            guard let clientTrafficSecret = state.keyScheduler.clientApplicationTrafficSecret,
-                  let serverTrafficSecret = state.keyScheduler.serverApplicationTrafficSecret else {
-                preconditionFailure()
-            }
-            self = .readyForData(state)
-            logger.info("client sending client certificate, certificate verify, and client finished")
-            return .init(handshakeBytesToSend: clientSecondFlightBuffer, newWriteEncryptionLevel: .application(secret: clientTrafficSecret), newReadEncryptionLevel: .application(secret: serverTrafficSecret))
+            return try self.sendClientSecondFlight(
+                from: state,
+                serializer: &serializer,
+                deliverResultCallback: deliverResultCallback
+            )
         case .serverCertificateVerify(let state):
             let (newState, clientFinished) =
                 try ReadyState.receivingServerFinished(
@@ -334,6 +319,238 @@ enum HandshakeState {
             return .init(handshakeBytesToSend: nil, newWriteEncryptionLevel: nil, sessionTicket: ticket.serialize())
         default:
             preconditionFailure()
+        }
+    }
+
+    // MARK: - The client's second flight
+    //
+    // Certificate, CertificateVerify and Finished are produced as one flight. Each of the
+    // first two may need data from a callback that is not ready yet, so the flight is built
+    // as a cascade: every stage either continues into the next or parks, carrying the bytes
+    // produced so far. Nothing is emitted until the whole flight is ready.
+
+    /// Resolves the client's certificate list, then continues the flight.
+    /// Returns `nil` when parked awaiting a callback.
+    mutating func sendClientSecondFlight(
+        from state: ServerCertificateVerifyState,
+        serializer: inout TLSMessageSerializer,
+        deliverResultCallback: (@Sendable (PendingAsyncResult) -> Void)?
+    ) throws(TLSError) -> PartialHandshakeResult? {
+        let negotiatedType = state.sessionData.clientCertificateType
+        let offeredSignatureAlgorithms = state.clientCertificateSignatureAlgorithms ?? []
+        var certificateList: [CertificateMessage.CertificateEntry] = []
+
+        switch state.configuration.authenticationMethod {
+        case .rawPublicKeyAuth(let clientKey):
+            // Only P256 raw public keys are supported on this path.
+            if negotiatedType == .rawPublicKey,
+               offeredSignatureAlgorithms.contains(where: { $0 == .ecdsa_secp256r1_sha256 }) {
+                certificateList = [
+                    .init(opaqueCertificateData: ByteBuffer(data: clientKey.publicKey.derRepresentation), extensions: [])
+                ]
+            } else {
+                logger.info("client raw public key is not usable for the negotiated parameters, sending empty certificate message")
+            }
+
+        case .certificateAuthCallbacks(let asyncAuthenticator):
+            var certificateInfo = CertificateInfo(peerOffer: PeerOffer(
+                certificateRequestSignatureAlgorithms: offeredSignatureAlgorithms,
+                certificateType: negotiatedType,
+                serverName: state.configuration.serverName,
+                alpn: state.serverALPN
+            ))
+            if let deliverCallback = deliverResultCallback {
+                certificateInfo.deliverResult = { result in
+                    deliverCallback(.certificate(result))
+                }
+            }
+
+            switch asyncAuthenticator.getCertificateChain(certificateInfo) {
+            case .available(let list):
+                certificateList = try Self.clientCertificateEntries(from: list, negotiatedType: negotiatedType)
+            case .unavailable(let reason):
+                logger.info("authenticator has no suitable client certificate: '\(reason)', sending empty certificate message")
+            case .waiting:
+                guard certificateInfo.deliverResult != nil else {
+                    logger.error("certificate callback returned .waiting but no deliverResultCallback is set")
+                    throw TLSError.handshakeError
+                }
+                self = .awaitingClientCertificate(
+                    AwaitingClientCertificateState(originalState: state, certificateInfo: certificateInfo)
+                )
+                return nil
+            }
+
+        case .noAuthAvailable, .externalPreSharedKeyAuth:
+            logger.info("client is not configured to authenticate, sending empty certificate message")
+        }
+
+        return try self.continueAfterClientCertificate(
+            from: state,
+            certificateList: certificateList,
+            accumulated: ByteBuffer(),
+            serializer: &serializer,
+            deliverResultCallback: deliverResultCallback
+        )
+    }
+
+    /// Builds the Certificate message, resolves the signature, then continues the flight.
+    /// Returns `nil` when parked awaiting a callback.
+    mutating func continueAfterClientCertificate(
+        from state: ServerCertificateVerifyState,
+        certificateList: [CertificateMessage.CertificateEntry],
+        accumulated: ByteBuffer,
+        serializer: inout TLSMessageSerializer,
+        deliverResultCallback: (@Sendable (PendingAsyncResult) -> Void)?
+    ) throws(TLSError) -> PartialHandshakeResult? {
+        var flight = accumulated
+        var (certificateState, certificateBytes) = try ClientCertificateState.sendingClientCertificate(
+            originalState: state,
+            certificateList: certificateList
+        )
+        flight.writeBuffer(&certificateBytes)
+
+        // An empty Certificate message is not followed by a CertificateVerify.
+        guard certificateState.sentCertificate else {
+            let verifyState = try ClientCertificateVerifyState.skippingClientCertificateVerify(originalState: certificateState)
+            return try self.finishClientSecondFlight(from: verifyState, accumulated: flight, serializer: &serializer)
+        }
+
+        let keyScheduler = certificateState.keyScheduler
+        let dataToSign = try keyScheduler.dataToSignInClientCertificateVerify().readableBytesView
+
+        switch certificateState.configuration.authenticationMethod {
+        case .rawPublicKeyAuth(let clientKey):
+            let algorithm = SignatureScheme.ecdsa_secp256r1_sha256
+            let signature = try clientKey.sign(bytes: dataToSign, signatureScheme: algorithm.rawValue)
+            return try self.continueAfterClientSignature(
+                from: certificateState,
+                signature: signature,
+                algorithm: algorithm,
+                accumulated: flight,
+                serializer: &serializer
+            )
+
+        case .certificateAuthCallbacks(let asyncAuthenticator):
+            var signatureInfo = SignatureInfo(
+                transcriptHash: dataToSign,
+                peerOffer: PeerOffer(
+                    certificateRequestSignatureAlgorithms: certificateState.clientCertificateSignatureAlgorithms ?? [],
+                    certificateType: certificateState.sessionData.clientCertificateType,
+                    serverName: certificateState.configuration.serverName,
+                    alpn: certificateState.serverALPN
+                )
+            )
+            if let deliverCallback = deliverResultCallback {
+                signatureInfo.deliverResult = { result in
+                    deliverCallback(.signature(result))
+                }
+            }
+
+            switch asyncAuthenticator.signTranscriptHash(signatureInfo) {
+            case .available(let signature, let signatureAlgorithm):
+                guard signatureInfo.peerOffer.signatureAlgorithms.contains(signatureAlgorithm) else {
+                    logger.error("callback selected signature algorithm not offered by peer")
+                    throw TLSError.handshakeFailure
+                }
+                return try self.continueAfterClientSignature(
+                    from: certificateState,
+                    signature: signature,
+                    algorithm: SignatureScheme(rawValue: signatureAlgorithm),
+                    accumulated: flight,
+                    serializer: &serializer
+                )
+            case .unavailable(let reason):
+                logger.error("authenticator failed to provide signature: '\(reason)'")
+                throw TLSError.handshakeFailure
+            case .waiting:
+                guard signatureInfo.deliverResult != nil else {
+                    logger.error("signature callback returned .waiting but no deliverResultCallback is set")
+                    throw TLSError.handshakeError
+                }
+                self = .awaitingClientSignature(
+                    AwaitingClientSignatureState(
+                        originalState: certificateState,
+                        signatureInfo: signatureInfo,
+                        accumulated: flight
+                    )
+                )
+                return nil
+            }
+
+        case .noAuthAvailable, .externalPreSharedKeyAuth:
+            preconditionFailure("sentCertificate is only true when the client can authenticate")
+        }
+    }
+
+    /// Builds the CertificateVerify message, then finishes the flight.
+    mutating func continueAfterClientSignature(
+        from state: ClientCertificateState,
+        signature: Data,
+        algorithm: SignatureScheme,
+        accumulated: ByteBuffer,
+        serializer: inout TLSMessageSerializer
+    ) throws(TLSError) -> PartialHandshakeResult {
+        var flight = accumulated
+        var (verifyState, verifyBytes) = try ClientCertificateVerifyState.sendingClientCertificateVerify(
+            originalState: state,
+            signature: signature,
+            algorithm: algorithm
+        )
+        flight.writeBuffer(&verifyBytes)
+        return try self.finishClientSecondFlight(from: verifyState, accumulated: flight, serializer: &serializer)
+    }
+
+    /// Appends Finished, switches to application keys and completes the handshake.
+    mutating func finishClientSecondFlight(
+        from state: ClientCertificateVerifyState,
+        accumulated: ByteBuffer,
+        serializer: inout TLSMessageSerializer
+    ) throws(TLSError) -> PartialHandshakeResult {
+        var flight = accumulated
+        var keyScheduler = state.keyScheduler
+        var clientFinishedBuffer = ByteBuffer()
+        let clientFinished = try keyScheduler.clientFinishedPayload()
+        serializer.writeHandshakeMessage(.finished(.init(verifyData: ByteBuffer(bytes: clientFinished))), into: &clientFinishedBuffer)
+        try keyScheduler.postClientFinished(clientFinishedBytes: clientFinishedBuffer)
+        flight.writeBuffer(&clientFinishedBuffer)
+
+        let readyState = ReadyState(configuration: state.configuration,
+                         negotiatedCipherSuite: state.negotiatedCipherSuite,
+                         negotiatedGroup: state.negotiatedGroup,
+                         certificates: state.certificates,
+                         serverALPN: state.serverALPN,
+                         serverQUICTransportParameters: state.serverQUICTransportParameters,
+                         earlyDataAccepted: state.earlyDataAccepted,
+                         keyScheduler: keyScheduler,
+                         epskNegotiated: false,
+                         epskNegotiationAttempted: state.epskNegotiationAttempted)
+        guard let clientTrafficSecret = readyState.keyScheduler.clientApplicationTrafficSecret,
+              let serverTrafficSecret = readyState.keyScheduler.serverApplicationTrafficSecret else {
+            preconditionFailure()
+        }
+        self = .readyForData(readyState)
+        logger.info("client sending client certificate, certificate verify, and client finished")
+        return .init(handshakeBytesToSend: flight, newWriteEncryptionLevel: .application(secret: clientTrafficSecret), newReadEncryptionLevel: .application(secret: serverTrafficSecret))
+    }
+
+    /// Validates a certificate list supplied by a callback and converts it to message entries.
+    static func clientCertificateEntries(
+        from list: CertificateList,
+        negotiatedType: CertificateType
+    ) throws(TLSError) -> [CertificateMessage.CertificateEntry] {
+        guard list.type == negotiatedType else {
+            logger.error("authenticator provided a certificate of a type that was not negotiated")
+            throw TLSError.negotiationFailed
+        }
+        if list.type == .rawPublicKey {
+            guard list.entries.count == 1 else {
+                logger.error("unexpected number of raw public keys")
+                throw TLSError.handshakeError
+            }
+        }
+        return list.entries.map {
+            .init(opaqueCertificateData: ByteBuffer(data: $0), extensions: [])
         }
     }
 }
@@ -652,7 +869,7 @@ extension HandshakeState {
                     serverCertificateType = selectedType
                 case .clientCertificateType(.selection(let selectedType)):
                     logger.info("got client cert type ext")
-                    guard serverHelloState.configuration.signingKey != nil else {
+                    guard !serverHelloState.configuration.providableClientCertificateTypes.isEmpty else {
                         logger.error("server unexpectedly sent client_certificate_type extension")
                         throw TLSError.unsupportedExtension
                     }
@@ -1008,6 +1225,44 @@ extension HandshakeState {
         }
     }
 
+    struct AwaitingClientCertificateState {
+        var originalState: ServerCertificateVerifyState
+        var certificateInfo: CertificateInfo
+
+        // Metadata mirrored from `originalState` so the state machine's accessors can read it.
+        var negotiatedCipherSuite: CipherSuite { originalState.negotiatedCipherSuite }
+        var negotiatedGroup: NamedGroup { originalState.negotiatedGroup }
+        var serverALPN: ApplicationLayerProtocol? { originalState.serverALPN }
+        var serverQUICTransportParameters: ByteBuffer? { originalState.serverQUICTransportParameters }
+        var earlyDataAccepted: Bool { originalState.earlyDataAccepted }
+        var epskNegotiationAttempted: Bool { originalState.epskNegotiationAttempted }
+
+        init(originalState: ServerCertificateVerifyState, certificateInfo: CertificateInfo) {
+            self.originalState = originalState
+            self.certificateInfo = certificateInfo
+        }
+    }
+
+    struct AwaitingClientSignatureState {
+        var originalState: ClientCertificateState
+        var signatureInfo: SignatureInfo
+        /// The client's `Certificate` message, held until the rest of the flight is ready.
+        var accumulated: ByteBuffer
+
+        var negotiatedCipherSuite: CipherSuite { originalState.negotiatedCipherSuite }
+        var negotiatedGroup: NamedGroup { originalState.negotiatedGroup }
+        var serverALPN: ApplicationLayerProtocol? { originalState.serverALPN }
+        var serverQUICTransportParameters: ByteBuffer? { originalState.serverQUICTransportParameters }
+        var earlyDataAccepted: Bool { originalState.earlyDataAccepted }
+        var epskNegotiationAttempted: Bool { originalState.epskNegotiationAttempted }
+
+        init(originalState: ClientCertificateState, signatureInfo: SignatureInfo, accumulated: ByteBuffer) {
+            self.originalState = originalState
+            self.signatureInfo = signatureInfo
+            self.accumulated = accumulated
+        }
+    }
+
     struct ClientCertificateState {
         // only valid transition is ServerCertificateVerifyState -> ClientCertificateState
         var configuration: HandshakeStateMachine.Configuration
@@ -1022,8 +1277,11 @@ extension HandshakeState {
         let epskNegotiationAttempted: Bool
         let sendClientCertificateMessage: Bool
         let clientCertificateSignatureAlgorithms: [SignatureScheme]?
+        /// `false` when an empty Certificate message was sent, in which case no
+        /// CertificateVerify may follow it.
+        let sentCertificate: Bool
 
-        init(originalState state: ServerCertificateVerifyState, keyScheduler: ClientSessionKeyManager<SHA384>) throws(TLSError) {
+        init(originalState state: ServerCertificateVerifyState, keyScheduler: ClientSessionKeyManager<SHA384>, sentCertificate: Bool) throws(TLSError) {
             self.configuration = state.configuration
             self.sessionData = state.sessionData
             self.negotiatedCipherSuite = state.negotiatedCipherSuite
@@ -1036,40 +1294,30 @@ extension HandshakeState {
             self.epskNegotiationAttempted = state.epskNegotiationAttempted
             self.sendClientCertificateMessage = state.sendClientCertificateMessage
             self.clientCertificateSignatureAlgorithms = state.clientCertificateSignatureAlgorithms
+            self.sentCertificate = sentCertificate
         }
 
-        static func sendingClientCertificate(originalState serverCertificateVerifyState: ServerCertificateVerifyState) throws(TLSError) -> (state: ClientCertificateState, clientCertificateBytes: ByteBuffer) {
-            let clientCertificateMessage: CertificateMessage
-
-            // if we have a signing key (currently only support P256)
-            // and we negotiated P256 as a signing algorithm
-            // and we negotiated Raw Public Keys as the certificate type
-            // then send a Certificate message
-            if serverCertificateVerifyState.sessionData.clientCertificateType == .rawPublicKey,
-                let clientKey = serverCertificateVerifyState.configuration.signingKey,
-                serverCertificateVerifyState.clientCertificateSignatureAlgorithms?.contains(where: { $0 == .ecdsa_secp256r1_sha256 }) ?? false {
-                // we have a key configured can make a real Certificate message
-                clientCertificateMessage = CertificateMessage(
-                    certificateRequestContext: ByteBuffer(),
-                    certificateList: [
-                        .init(opaqueCertificateData: ByteBuffer(data:clientKey.publicKey.derRepresentation), extensions: [])
-                    ]
-                )
-            } else {
-                logger.info("client not configured with a signing key for server, sending empty certificate message")
-                // send empty Certificate message if we don't
-                // have a key or don't support the negotiated signature algorithm
-                clientCertificateMessage = CertificateMessage(
-                    certificateRequestContext: ByteBuffer(),
-                    certificateList:[]
-                )
-            }
+        /// Builds the Certificate message from an already-resolved certificate list.
+        ///
+        /// An empty list is the RFC 8446 "no suitable certificate" signal.
+        static func sendingClientCertificate(
+            originalState serverCertificateVerifyState: ServerCertificateVerifyState,
+            certificateList: [CertificateMessage.CertificateEntry]
+        ) throws(TLSError) -> (state: ClientCertificateState, clientCertificateBytes: ByteBuffer) {
+            let clientCertificateMessage = CertificateMessage(
+                certificateRequestContext: ByteBuffer(),
+                certificateList: certificateList
+            )
 
             var keyScheduler = serverCertificateVerifyState.keyScheduler
             var clientCertificateBytes = ByteBuffer()
             clientCertificateBytes.writeHandshakeMessage(clientCertificateMessage)
             try keyScheduler.addPostFinishedMessageToTransportHash(clientCertificateBytes)
-            let newState = try Self(originalState: serverCertificateVerifyState, keyScheduler: keyScheduler)
+            let newState = try Self(
+                originalState: serverCertificateVerifyState,
+                keyScheduler: keyScheduler,
+                sentCertificate: !certificateList.isEmpty
+            )
             return (newState, clientCertificateBytes)
         }
     }
@@ -1102,21 +1350,20 @@ extension HandshakeState {
         }
 
         // only valid transition is ClientCertificateState -> ClientCertificateVerifyState
-        static func sendingClientCertificateVerify(originalState clientCertificateState: ClientCertificateState) throws(TLSError) -> (state: ClientCertificateVerifyState, clientCertificateVerifyBytes: ByteBuffer) {
-            guard let clientKey = clientCertificateState.configuration.signingKey else {
-                // skip
-                let newState = try Self.init(originalState: clientCertificateState, keyScheduler: clientCertificateState.keyScheduler)
-                return (newState, ByteBuffer())
-            }
-            // if we have a signing key actually send this message
+        /// No CertificateVerify follows an empty Certificate message.
+        static func skippingClientCertificateVerify(originalState clientCertificateState: ClientCertificateState) throws(TLSError) -> ClientCertificateVerifyState {
+            return try Self.init(originalState: clientCertificateState, keyScheduler: clientCertificateState.keyScheduler)
+        }
+
+        /// Builds the CertificateVerify message from an already-resolved signature.
+        static func sendingClientCertificateVerify(
+            originalState clientCertificateState: ClientCertificateState,
+            signature: Data,
+            algorithm: SignatureScheme
+        ) throws(TLSError) -> (state: ClientCertificateVerifyState, clientCertificateVerifyBytes: ByteBuffer) {
             var keyScheduler = clientCertificateState.keyScheduler
-            let negotiatedSigAlg = SignatureScheme.ecdsa_secp256r1_sha256
-            let data = try keyScheduler.dataToSignInClientCertificateVerify().readableBytesView
-
-            let signature = try clientKey.sign(bytes: data, signatureScheme: SignatureScheme.ecdsa_secp256r1_sha256.rawValue)
-
             let clientCertificateVerifyMessage = CertificateVerify(
-                algorithm: negotiatedSigAlg,
+                algorithm: algorithm,
                 signature: ByteBuffer(data: signature)
                 )
             var clientCertificateVerifyBytes = ByteBuffer()
@@ -1345,6 +1592,10 @@ extension HandshakeState {
             return "serverCertificateRequest"
         case .awaitingVerification:
             return "awaitingVerification"
+        case .awaitingClientCertificate:
+            return "awaitingClientCertificate"
+        case .awaitingClientSignature:
+            return "awaitingClientSignature"
         case .serverCertificate:
             return "serverCertificate"
         case .serverCertificateVerify:
