@@ -1521,6 +1521,10 @@ extension ServerHandshakeState {
         let epskNegotiated: Bool
         let pskNegotiationAttempted: Bool
 
+        var exporter: SwiftTLSExporter? {
+            return self.keyScheduler.exporter
+        }
+
         private init(originalState serverFinishedState: ServerFinishedState,
             configuration: ServerHandshakeStateMachine.Configuration,
             keyScheduler: ServerSessionKeyManager<SHA384>

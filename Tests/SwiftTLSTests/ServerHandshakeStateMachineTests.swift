@@ -770,6 +770,84 @@ class ServerHandshakeStateMachineTests: XCTestCase {
         )
     }
 
+    private func handshookPair() throws -> (HandshakeStateMachine, ServerHandshakeStateMachine) {
+        let clientConfig = configurationGenerator.getClientConfigWithOptions(signingKey: true)
+        let serverConfig = configurationGenerator.getServerConfigWithOptions(clientAuthReq: true)
+        var clientStateMachine = try HandshakeStateMachine(configuration: clientConfig)
+        var serverStateMachine = try ServerHandshakeStateMachine(configuration: serverConfig)
+        try runSuccessfulHandshake(clientStateMachine: &clientStateMachine, serverStateMachine: &serverStateMachine, clientAuthRequired: true)
+        return (clientStateMachine, serverStateMachine)
+    }
+
+    /// Client and server derive identical exporter keys from the same connection.
+    func testExporterKeysMatchAcrossRoles() throws {
+        let (clientStateMachine, serverStateMachine) = try handshookPair()
+
+        let clientExporter = try XCTUnwrap(clientStateMachine.exporter)
+        let serverExporter = try XCTUnwrap(serverStateMachine.exporter)
+
+        let context = Array("context".utf8)
+
+        let empty = try XCTUnwrap(clientExporter.exportKeyingMaterial(label: "label a", context: [], length: 48))
+        XCTAssertEqual(empty, serverExporter.exportKeyingMaterial(label: "label a", context: [], length: 48))
+
+        let withContext = try XCTUnwrap(clientExporter.exportKeyingMaterial(label: "label a", context: context, length: 48))
+        XCTAssertEqual(withContext, serverExporter.exportKeyingMaterial(label: "label a", context: context, length: 48))
+        XCTAssertNotEqual(empty, withContext)
+
+        let short = try XCTUnwrap(clientExporter.exportKeyingMaterial(label: "label a", context: [], length: 16))
+        XCTAssertEqual(short, serverExporter.exportKeyingMaterial(label: "label a", context: [], length: 16))
+        XCTAssertEqual(short.bitCount, 16 * 8)
+
+        XCTAssertNotEqual(empty, clientExporter.exportKeyingMaterial(label: "label b", context: [], length: 48))
+        XCTAssertNotEqual(empty, serverExporter.exportKeyingMaterial(label: "label b", context: [], length: 48))
+    }
+
+    /// The role-agnostic accessor reaches both state machines and agrees with the concrete ones.
+    func testExporterThroughRoleAgnosticAccessor() throws {
+        let (clientStateMachine, serverStateMachine) = try handshookPair()
+
+        let roleAgnosticClient = TLSHandshakeStateMachine.client(clientStateMachine)
+        let roleAgnosticServer = TLSHandshakeStateMachine.server(serverStateMachine)
+
+        XCTAssertFalse(roleAgnosticClient.isServer)
+        XCTAssertTrue(roleAgnosticServer.isServer)
+
+        let context = Array("context".utf8)
+        let viaClient = try XCTUnwrap(roleAgnosticClient.exporter?.exportKeyingMaterial(label: "label a", context: context, length: 48))
+        let viaServer = try XCTUnwrap(roleAgnosticServer.exporter?.exportKeyingMaterial(label: "label a", context: context, length: 48))
+
+        XCTAssertEqual(viaClient, viaServer)
+        XCTAssertEqual(viaClient, clientStateMachine.exporter?.exportKeyingMaterial(label: "label a", context: context, length: 48))
+        XCTAssertEqual(viaServer, serverStateMachine.exporter?.exportKeyingMaterial(label: "label a", context: context, length: 48))
+    }
+
+    /// A vended exporter keeps working once the state machines it came from are gone.
+    func testVendedExporterOutlivesStateMachines() throws {
+        let context = Array("context".utf8)
+
+        let exporter: SwiftTLSExporter = try {
+            let (clientStateMachine, _) = try handshookPair()
+            return try XCTUnwrap(clientStateMachine.exporter)
+        }()
+
+        XCTAssertNotNil(exporter.exportKeyingMaterial(label: "label a", context: context, length: 48))
+        XCTAssertNil(exporter.exportKeyingMaterial(label: "label a", context: context, length: 0))
+    }
+
+    /// No exporter is vended before the handshake completes, by any accessor.
+    func testNoExporterVendedBeforeHandshakeCompletes() throws {
+        let clientConfig = configurationGenerator.getClientConfigWithOptions(signingKey: true)
+        let serverConfig = configurationGenerator.getServerConfigWithOptions(clientAuthReq: true)
+        let clientStateMachine = try HandshakeStateMachine(configuration: clientConfig)
+        let serverStateMachine = try ServerHandshakeStateMachine(configuration: serverConfig)
+
+        XCTAssertNil(clientStateMachine.exporter)
+        XCTAssertNil(serverStateMachine.exporter)
+        XCTAssertNil(TLSHandshakeStateMachine.client(clientStateMachine).exporter)
+        XCTAssertNil(TLSHandshakeStateMachine.server(serverStateMachine).exporter)
+    }
+
     // TODO: Test no common signature algorithms when possible to configure signature algorithm besides
     // just P256.
     // Do this by fully mocking the server side.

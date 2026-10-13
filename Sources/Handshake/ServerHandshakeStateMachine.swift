@@ -186,6 +186,15 @@ struct ServerHandshakeStateMachine {
         }
     }
 
+    var exporter: SwiftTLSExporter? {
+        switch self.state {
+        case .readyForData(let ready):
+            return ready.exporter
+        default:
+            return nil
+        }
+    }
+
     /// Obtain the value of the QUIC transport parameters set by the peer, if any.
     ///
     /// Returns `nil` if the peer didn't set any, or if the handshake has not progressed to the point

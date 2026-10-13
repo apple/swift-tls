@@ -40,12 +40,14 @@ extension HKDF {
         var serializedLabel = Array<UInt8>()
         serializedLabel.reserveCapacity(2 + 256 + 256)
 
+        let labelCount = Self.labelPrefix.utf8.count + label.utf8.count
+
         let shortLength = UInt16(length)
         serializedLabel.append(UInt8(truncatingIfNeeded: shortLength >> 8))
         serializedLabel.append(UInt8(truncatingIfNeeded: shortLength))
 
-        serializedLabel.append(UInt8(truncatingIfNeeded: "tls13 ".utf8.count) + UInt8(label.utf8.count))
-        serializedLabel.append(contentsOf: "tls13 ".utf8)
+        serializedLabel.append(UInt8(labelCount))
+        serializedLabel.append(contentsOf: Self.labelPrefix.utf8)
         serializedLabel.append(contentsOf: label.utf8)
 
         context.withUnsafeBytes { contextPointer in
@@ -60,9 +62,31 @@ extension HKDF {
         return Self.expandLabel(secret: secret, label: label, context: transcriptHash, length: H.Digest.byteCount)
     }
 
-    static func tlsExporter<SecretBytes: ContiguousBytes>(secret: SecretBytes, label: String, context: H.Digest) -> SymmetricKey {
+    /// Derives exporter key material, per RFC 8446 section 7.5. Returns `nil` if `label` or
+    /// `length` is out of range.
+    static func tlsExporter<SecretBytes: ContiguousBytes, ContextBytes: ContiguousBytes>(
+        secret: SecretBytes,
+        label: String,
+        context: ContextBytes,
+        length: Int
+    ) -> SymmetricKey? {
+        // RFC 5869 caps HKDF-Expand at 255 blocks and HkdfLabel caps the prefixed label at 255
+        // bytes; both would trap further down rather than fail gracefully.
+        guard length > 0, length <= 255 * H.Digest.byteCount,
+              Self.labelPrefix.utf8.count + label.utf8.count <= 255 else {
+            return nil
+        }
+
+        var hasher = H()
+        context.withUnsafeBytes { hasher.update(bufferPointer: $0) }
+        let contextHash = hasher.finalize()
+
         let derivedSecret = Self.deriveSecret(secret: secret, label: label, transcriptHash: H.zeroHash)
-        return Self.expandLabel(secret: derivedSecret, label: "exporter", context: context, length: H.Digest.byteCount)
+        return Self.expandLabel(secret: derivedSecret, label: "exporter", context: contextHash, length: length)
+    }
+
+    static var labelPrefix: String {
+        return "tls13 "
     }
 
     static func extract(inputKeyMaterial ikm: SymmetricKey, salt: SymmetricKey) -> HashedAuthenticationCode<H> {
