@@ -533,7 +533,7 @@ class RecordParsingTests: XCTestCase {
         let plaintext = [UInt8](repeating: 2, count: Int(maxPlaintextFragmentLength) + 1)
         let innerPlaintext = TLSInnerPlaintext(content: plaintext.span.bytes, contentType: .handshake, paddingLength: 0)
         let ad = additionalData(ciphertextLength: innerPlaintext.length + TLSRecordProtector.aesTagLengthBytes)
-        let ciphertextRecord = try TLSCiphertext(writeKey: key, nonce: nonce, innerPlaintext:innerPlaintext, additionalData: ad.bytes)
+        let ciphertextRecord = try TLSCiphertext(writeKey: key, nonce: nonce, innerPlaintext:innerPlaintext, additionalData: ad.span.bytes)
         buffer.writeRecord(ciphertextRecord)
         recordParser.appendBytes(&buffer)
         guard let ciphertext = try recordParser.parseCiphertextRecord() else {
@@ -549,7 +549,7 @@ class RecordParsingTests: XCTestCase {
         let plaintext = [UInt8](repeating: 2, count: Int(maxPlaintextFragmentLength))
         let innerPlaintext = TLSInnerPlaintext(content: plaintext.span.bytes, contentType: .handshake, paddingLength: 0)
         let ad = additionalData(ciphertextLength: innerPlaintext.length + TLSRecordProtector.aesTagLengthBytes)
-        let ciphertextRecord = try TLSCiphertext(writeKey: key, nonce: nonce, innerPlaintext:innerPlaintext, additionalData: ad.bytes)
+        let ciphertextRecord = try TLSCiphertext(writeKey: key, nonce: nonce, innerPlaintext:innerPlaintext, additionalData: ad.span.bytes)
         buffer.writeRecord(ciphertextRecord)
         recordParser.appendBytes(&buffer)
         guard let ciphertext = try recordParser.parseCiphertextRecord() else {
@@ -696,7 +696,7 @@ class RecordParsingTests: XCTestCase {
         let plaintext: [UInt8] = [0x01, 0x02, 0x03, 0x04, 0x05, 0x06]
         let innerPlaintext = TLSInnerPlaintext(content: plaintext.span.bytes, contentType: .handshake, paddingLength: 0)
         let ad = additionalData(ciphertextLength: innerPlaintext.length + TLSRecordProtector.aesTagLengthBytes)
-        let ciphertextRecord = try TLSCiphertext(writeKey: key, nonce: nonce, innerPlaintext:innerPlaintext, additionalData: ad.bytes)
+        let ciphertextRecord = try TLSCiphertext(writeKey: key, nonce: nonce, innerPlaintext:innerPlaintext, additionalData: ad.span.bytes)
         let result = try ciphertextRecord.deprotect(peerWriteKey: key, nonce: nonce, aeadExpansionLength: TLSRecordProtector.aesTagLengthBytes)
         XCTAssertEqual(plaintext, result.fragment)
     }
@@ -707,7 +707,7 @@ class RecordParsingTests: XCTestCase {
         let nonce = calculateTLSRecordNonce(iv: server_iv, seqno: 0)
         let innerPlaintext = TLSInnerPlaintext(content: RecordParsingTests.oneRTTServerSecondFlightPayload.span.bytes, contentType: .handshake, paddingLength: 0)
         let ad = additionalData(ciphertextLength: innerPlaintext.length + TLSRecordProtector.aesTagLengthBytes)
-        let cipherText = try TLSCiphertext(writeKey: key, nonce: nonce, innerPlaintext:innerPlaintext, additionalData: ad.bytes)
+        let cipherText = try TLSCiphertext(writeKey: key, nonce: nonce, innerPlaintext:innerPlaintext, additionalData: ad.span.bytes)
 
         let result = try cipherText.deprotect(peerWriteKey: key, nonce: nonce, aeadExpansionLength: TLSRecordProtector.aesTagLengthBytes)
         XCTAssertEqual(RecordParsingTests.oneRTTServerSecondFlightPayload, result.fragment)
@@ -735,7 +735,7 @@ class RecordParsingTests: XCTestCase {
         let nonce = calculateTLSRecordNonce(iv: server_iv, seqno: 0)
         let innerPlaintext = TLSInnerPlaintext(content: RecordParsingTests.oneRTTServerSecondFlightPayload.span.bytes, contentType: .handshake, paddingLength: 5)
         let ad = additionalData(ciphertextLength: innerPlaintext.length + TLSRecordProtector.aesTagLengthBytes)
-        let cipherText = try TLSCiphertext(writeKey: key, nonce: nonce, innerPlaintext:innerPlaintext, additionalData: ad.bytes)
+        let cipherText = try TLSCiphertext(writeKey: key, nonce: nonce, innerPlaintext:innerPlaintext, additionalData: ad.span.bytes)
 
         let result = try cipherText.deprotect(peerWriteKey: key, nonce: nonce, aeadExpansionLength: TLSRecordProtector.aesTagLengthBytes)
         XCTAssertEqual(RecordParsingTests.oneRTTServerSecondFlightPayload, result.fragment)
@@ -746,7 +746,7 @@ class RecordParsingTests: XCTestCase {
     private func protectedRecordBytes(key: SymmetricKey, nonce: Nonce, content: [UInt8]) throws -> [UInt8] {
         let innerPlaintext = TLSInnerPlaintext(content: content.span.bytes, contentType: .applicationData, paddingLength: 0)
         let ad = additionalData(ciphertextLength: innerPlaintext.length + TLSRecordProtector.aesTagLengthBytes)
-        let record = try TLSCiphertext(writeKey: key, nonce: nonce, innerPlaintext: innerPlaintext, additionalData: ad.bytes)
+        let record = try TLSCiphertext(writeKey: key, nonce: nonce, innerPlaintext: innerPlaintext, additionalData: ad.span.bytes)
         var buffer = ByteBuffer()
         buffer.writeRecord(record)
         guard let bytes = buffer.readBytes(length: buffer.readableBytes) else {
@@ -915,7 +915,7 @@ class RecordParsingTests: XCTestCase {
         let paddingLength = 5
         let innerPlaintext = TLSInnerPlaintext(content: content.span.bytes, contentType: .handshake, paddingLength: paddingLength)
         let ad = additionalData(ciphertextLength: innerPlaintext.length + TLSRecordProtector.aesTagLengthBytes)
-        let cipherText = try TLSCiphertext(writeKey: key, nonce: nonce, innerPlaintext: innerPlaintext, additionalData: ad.bytes)
+        let cipherText = try TLSCiphertext(writeKey: key, nonce: nonce, innerPlaintext: innerPlaintext, additionalData: ad.span.bytes)
 
         let nonceBytes = [UInt8](copying: nonce.bytes)
         let cryptoKitNonce = try AES.GCM.Nonce(data: Data(nonceBytes))
@@ -925,7 +925,7 @@ class RecordParsingTests: XCTestCase {
         let rawCiphertext = Data(encryptedRecord.prefix(encryptedRecord.count - tagSize))
         let tag = Data(encryptedRecord.suffix(tagSize))
         let sealedBox = try AES.GCM.SealedBox(nonce: cryptoKitNonce, ciphertext: rawCiphertext, tag: tag)
-        let rawPlaintext = [UInt8](try AES.GCM.open(sealedBox, using: key, authenticating: ad))
+        let rawPlaintext = [UInt8](try AES.GCM.open(sealedBox, using: key, authenticating: [UInt8](copying: ad.span.bytes)))
 
         // rawPlaintext = content || content-type byte || padding, untouched.
         XCTAssertEqual(rawPlaintext.count, content.count + 1 + paddingLength)
@@ -941,7 +941,7 @@ class RecordParsingTests: XCTestCase {
         let nonce = calculateTLSRecordNonce(iv: server_iv, seqno: 0)
         let innerPlaintext = TLSInnerPlaintext(content: RecordParsingTests.oneRTTServerSecondFlightPayload.span.bytes, contentType: .handshake, paddingLength: 0)
         let ad = additionalData(ciphertextLength: innerPlaintext.length + TLSRecordProtector.aesTagLengthBytes)
-        let cipherText = try TLSCiphertext(writeKey: key, nonce: nonce, innerPlaintext:innerPlaintext, additionalData: ad.bytes)
+        let cipherText = try TLSCiphertext(writeKey: key, nonce: nonce, innerPlaintext:innerPlaintext, additionalData: ad.span.bytes)
 
         recordParser.appendBytes(RecordParsingTests.oneRTTServerSecondFlightFullRecord)
         XCTAssertEqual(recordParser.numberOfBytesBuffered, RecordParsingTests.oneRTTServerSecondFlightFullRecord.count)
