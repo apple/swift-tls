@@ -147,9 +147,12 @@ public struct SwiftTLSOpaqueReferenceKey: Sendable {
         }
     }
 
+    // `@preconcurrency` keeps `@Sendable` out of this initializer's symbol, so callers built against a non-`@Sendable`
+    // callback still link.
     /// Construct a private key handle for a P256 key that the caller does not directly hold.
     /// - Parameter p256: The P256 public key corresponding to the underlying private key.
     /// - Parameter signCallback: `SwiftTLSRefKeySignCallback` callback that signs data using the underlying private key.
+    @preconcurrency
     public init(_ p256: P256.Signing.PublicKey, _ signCallback: @escaping SwiftTLSRefKeySignCallback) {
         publicKey = PublicKey(p256)
         sign = signCallback
