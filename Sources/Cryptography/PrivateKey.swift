@@ -153,7 +153,17 @@ public struct SwiftTLSOpaqueReferenceKey: Sendable {
     /// - Parameter p256: The P256 public key corresponding to the underlying private key.
     /// - Parameter signCallback: `SwiftTLSRefKeySignCallback` callback that signs data using the underlying private key.
     @preconcurrency
+    @available(*, deprecated, renamed: "init(publicKey:_:)")
     public init(_ p256: P256.Signing.PublicKey, _ signCallback: @escaping SwiftTLSRefKeySignCallback) {
+        publicKey = PublicKey(p256)
+        sign = signCallback
+        keyType = .p256
+    }
+
+    /// Construct a private key handle for a P256 key that the caller does not directly hold.
+    /// - Parameter publicKey: The P256 public key corresponding to the underlying private key.
+    /// - Parameter signCallback: `SwiftTLSRefKeySignCallback` callback that signs data using the underlying private key.
+    public init(publicKey p256: P256.Signing.PublicKey, _ signCallback: @escaping SwiftTLSRefKeySignCallback) {
         publicKey = PublicKey(p256)
         sign = signCallback
         keyType = .p256

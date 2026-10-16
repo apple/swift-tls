@@ -175,7 +175,7 @@ class TestConfigurationGenerator {
                     return nil
                 }
             }
-            clientKey = .opaqueReference(SwiftTLSOpaqueReferenceKey(clientSigningKey.publicKey, signCallback))
+            clientKey = .opaqueReference(SwiftTLSOpaqueReferenceKey(publicKey: clientSigningKey.publicKey, signCallback))
         }
         if sepKey {
             #if !SWIFTTLS_EMBEDDED && canImport(Darwin)
@@ -227,7 +227,7 @@ class TestConfigurationGenerator {
                     return nil
                 }
             }
-            serverKey = .opaqueReference(SwiftTLSOpaqueReferenceKey(serverSigningKey.publicKey, signCallback))
+            serverKey = .opaqueReference(SwiftTLSOpaqueReferenceKey(publicKey: serverSigningKey.publicKey, signCallback))
         }
         if sepKey {
             #if !SWIFTTLS_EMBEDDED && canImport(Darwin)

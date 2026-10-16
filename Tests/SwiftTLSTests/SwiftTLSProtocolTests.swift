@@ -52,7 +52,7 @@ class SwiftTLSProtocolTests: XCTestCase {
                 }
                 if refKey {
                     let clientSigningKey = self.clientSigningKey
-                    clientOptions.privateKey = .opaqueReference(SwiftTLSOpaqueReferenceKey(clientSigningKey.publicKey) { (data: Data, sigAlg: UInt16) -> Data? in
+                    clientOptions.privateKey = .opaqueReference(SwiftTLSOpaqueReferenceKey(publicKey: clientSigningKey.publicKey) { (data: Data, sigAlg: UInt16) -> Data? in
                         do {
                             return try clientSigningKey.signature(for: data).derRepresentation
                         } catch {
@@ -88,7 +88,7 @@ class SwiftTLSProtocolTests: XCTestCase {
             }
             if refKey {
                 let serverSigningKey = self.serverSigningKey
-                serverOptions.privateKey = .opaqueReference(SwiftTLSOpaqueReferenceKey(serverSigningKey.publicKey) { (data: Data, sigAlg: UInt16) -> Data? in
+                serverOptions.privateKey = .opaqueReference(SwiftTLSOpaqueReferenceKey(publicKey: serverSigningKey.publicKey) { (data: Data, sigAlg: UInt16) -> Data? in
                     do {
                         return try serverSigningKey.signature(for: data).derRepresentation
                     } catch {
