@@ -383,10 +383,10 @@ struct HandshakeStateMachine {
         }
     }
 
-    func generateTLSExporterKey(label: String) -> SymmetricKey? {
+    var exporter: SwiftTLSExporter? {
         switch self.state {
         case .readyForData(let ready):
-            return ready.generateTLSExporterKey(label: label)
+            return ready.keyScheduler.exporter
         default:
             return nil
         }
@@ -855,6 +855,17 @@ extension TLSHandshakeStateMachine {
 #if !SWIFTTLS_CLIENT_ONLY
         case .server:
             return true
+#endif
+        }
+    }
+
+    var exporter: SwiftTLSExporter? {
+        switch self {
+        case .client(let client):
+            return client.exporter
+#if !SWIFTTLS_CLIENT_ONLY
+        case .server(let server):
+            return server.exporter
 #endif
         }
     }

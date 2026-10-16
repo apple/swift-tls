@@ -175,6 +175,11 @@ struct TLSRecordHandler: ~Copyable {
         return maxPlaintextFragmentLength
     }
 
+    /// Returns `nil` until the handshake has produced the exporter master secret.
+    var exporter: SwiftTLSExporter? {
+        return self.stateMachine.exporter
+    }
+
     var handshakeComplete: Bool {
         switch self.stateMachine {
         case .client(let clientHandshakeStateMachine):
