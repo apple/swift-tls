@@ -123,7 +123,7 @@ public typealias SwiftTLSSignatureScheme = UInt16
 /// A callback that accepts the bytes to sign and the negotiated TLS signature scheme,
 /// and returns the signature, or `nil` when signing fails.
 @_spi(SwiftTLSOptions)
-public typealias SwiftTLSRefKeySignCallback = (Data, SwiftTLSSignatureScheme) -> Data?
+public typealias SwiftTLSRefKeySignCallback = @Sendable (Data, SwiftTLSSignatureScheme) -> Data?
 
 /// The underlying key types supported by `SwiftTLSOpaqueReferenceKey`.
 enum SwiftTLSOpaqueReferenceKeyType: Sendable {
@@ -135,7 +135,7 @@ enum SwiftTLSOpaqueReferenceKeyType: Sendable {
 @_spi(SwiftTLSOptions)
 // Availability due to `CryptoKit`'s `P256.Signing.PublicKey`
 @available(macOS 11, iOS 14, tvOS 14, watchOS 7, *)
-public struct SwiftTLSOpaqueReferenceKey {
+public struct SwiftTLSOpaqueReferenceKey: Sendable {
     let publicKey: PublicKey
     let sign: SwiftTLSRefKeySignCallback
     let keyType: SwiftTLSOpaqueReferenceKeyType
@@ -147,10 +147,23 @@ public struct SwiftTLSOpaqueReferenceKey {
         }
     }
 
+    // `@preconcurrency` keeps `@Sendable` out of this initializer's symbol, so callers built against a non-`@Sendable`
+    // callback still link.
     /// Construct a private key handle for a P256 key that the caller does not directly hold.
     /// - Parameter p256: The P256 public key corresponding to the underlying private key.
     /// - Parameter signCallback: `SwiftTLSRefKeySignCallback` callback that signs data using the underlying private key.
+    @preconcurrency
+    @available(*, deprecated, renamed: "init(publicKey:_:)")
     public init(_ p256: P256.Signing.PublicKey, _ signCallback: @escaping SwiftTLSRefKeySignCallback) {
+        publicKey = PublicKey(p256)
+        sign = signCallback
+        keyType = .p256
+    }
+
+    /// Construct a private key handle for a P256 key that the caller does not directly hold.
+    /// - Parameter publicKey: The P256 public key corresponding to the underlying private key.
+    /// - Parameter signCallback: `SwiftTLSRefKeySignCallback` callback that signs data using the underlying private key.
+    public init(publicKey p256: P256.Signing.PublicKey, _ signCallback: @escaping SwiftTLSRefKeySignCallback) {
         publicKey = PublicKey(p256)
         sign = signCallback
         keyType = .p256

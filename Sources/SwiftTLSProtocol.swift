@@ -53,8 +53,8 @@ public enum SwiftTLSError: Error, Equatable {
 @_spi(SwiftTLSOptions)
 // Availability due to `CryptoKit`'s `SecureEnclave.P256.Signing.PrivateKey`
 @available(macOS 11, iOS 14, tvOS 14, watchOS 7, *)
-public struct SwiftTLSOptions {
-    @frozen public enum EncryptionLevel: CustomDebugStringConvertible {
+public struct SwiftTLSOptions: Sendable {
+    @frozen public enum EncryptionLevel: CustomDebugStringConvertible, Sendable {
         case initial
         case earlyData
         case handshake
@@ -97,7 +97,7 @@ public struct SwiftTLSOptions {
     public var sessionState: [UInt8]?
     public var newSessionTicketRequestCount: UInt8 = 0
     public var resumedSessionTicketRequestCount: UInt8 = 0
-    public enum KeyExchangeGroup: UInt16 {
+    public enum KeyExchangeGroup: UInt16, Sendable {
         case secp256 = 0x0017
         case secp384 = 0x0018
         case x25519 = 0x001D
@@ -105,7 +105,7 @@ public struct SwiftTLSOptions {
     }
     public var keyExchangeGroup: KeyExchangeGroup = .secp384
 
-    public enum CipherSuite: UInt16 {
+    public enum CipherSuite: UInt16, Sendable {
         case AES128GCM_SHA256 = 0x1301
         case AES256GCM_SHA384 = 0x1302
         case chacha20Poly1305_SHA256 = 0x1303
@@ -116,7 +116,7 @@ public struct SwiftTLSOptions {
     // If set with raw public keys will send a "Certificate Request" message.
     public var clientAuthRequired: Bool = false
 
-    public struct ExternalPSK {
+    public struct ExternalPSK: Sendable {
         let externalIdentity: [UInt8]
         let epsk: SymmetricKey
         let context: [UInt8]?
