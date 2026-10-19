@@ -167,14 +167,15 @@ class TestConfigurationGenerator {
         }
 
         if refKey {
+            let clientSigningKey = self.clientSigningKey
             let signCallback: SwiftTLSRefKeySignCallback = { (data: Data, sigAlg: UInt16) -> Data? in
                 do {
-                    return try self.clientSigningKey.signature(for: data).derRepresentation as Data
+                    return try clientSigningKey.signature(for: data).derRepresentation as Data
                 } catch {
                     return nil
                 }
             }
-            clientKey = .opaqueReference(SwiftTLSOpaqueReferenceKey(clientSigningKey.publicKey, signCallback))
+            clientKey = .opaqueReference(SwiftTLSOpaqueReferenceKey(publicKey: clientSigningKey.publicKey, signCallback))
         }
         if sepKey {
             #if !SWIFTTLS_EMBEDDED && canImport(Darwin)
@@ -218,14 +219,15 @@ class TestConfigurationGenerator {
         }
 
         if refKey {
+            let serverSigningKey = self.serverSigningKey
             let signCallback: SwiftTLSRefKeySignCallback = { (data: Data, sigAlg: UInt16) -> Data? in
                 do {
-                    return try self.serverSigningKey.signature(for: data).derRepresentation as Data
+                    return try serverSigningKey.signature(for: data).derRepresentation as Data
                 } catch {
                     return nil
                 }
             }
-            serverKey = .opaqueReference(SwiftTLSOpaqueReferenceKey(serverSigningKey.publicKey, signCallback))
+            serverKey = .opaqueReference(SwiftTLSOpaqueReferenceKey(publicKey: serverSigningKey.publicKey, signCallback))
         }
         if sepKey {
             #if !SWIFTTLS_EMBEDDED && canImport(Darwin)

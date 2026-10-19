@@ -37,7 +37,7 @@ private let logger = Logger(label: "com.apple.security.swifttls.HandshakeStateMa
 @_spi(SwiftTLSOptions)
 // Availability due to `CryptoKit`'s `P256.Signing.PublicKey`
 @available(macOS 11, iOS 14, tvOS 14, watchOS 7, *)
-public enum SwiftTLSPrivateKey {
+public enum SwiftTLSPrivateKey: Sendable {
     case p256(P256.Signing.PrivateKey)
 #if !SWIFTTLS_EMBEDDED && canImport(Darwin)
     case p256SEPBacked(SecureEnclave.P256.Signing.PrivateKey)
