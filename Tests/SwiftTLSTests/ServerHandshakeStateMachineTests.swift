@@ -1740,6 +1740,45 @@ class ServerHandshakeStateMachineTests: XCTestCase {
         }
     }
 
+    /// When both peers support more than one protocol in common, the server's
+    /// ordering decides. Here the client prefers protocolA and the server prefers
+    /// protocolB, so the negotiated protocol must be protocolB.
+    func testALPNUsesServerPreferenceOrder() throws {
+        let clientConfig = configurationGenerator.getClientConfigWithOptions(alpn: ["protocolA", "protocolB"])
+        let serverConfig = configurationGenerator.getServerConfigWithOptions(alpn: ["protocolB", "protocolA"])
+
+        var clientStateMachine = try HandshakeStateMachine(configuration: clientConfig)
+        var serverStateMachine = try ServerHandshakeStateMachine(configuration: serverConfig)
+
+        // Send Client Hello
+        var clientHelloBytes = try clientStateMachine.startHandshake().handshakeBytesToSend!
+
+        // Read Client Hello and Send ServerHello
+        serverStateMachine.receivedNetworkData(&clientHelloBytes)
+        var result = try serverStateMachine.processHandshake()!
+        guard var serverHelloBytes = result.handshakeBytesToSend else {
+            XCTFail()
+            return
+        }
+
+        // Read Server Hello
+        clientStateMachine.receivedNetworkData(&serverHelloBytes)
+        XCTAssertNotNil(try clientStateMachine.processHandshake())
+        XCTAssertNil(clientStateMachine.peerALPN)
+
+        // Send Encrypted Extensions, which carry the server's selection
+        result = try serverStateMachine.processHandshake()!
+        guard var serverEncryptedExtensionsBytes = result.handshakeBytesToSend else {
+            XCTFail()
+            return
+        }
+
+        // Read Encrypted Extensions
+        clientStateMachine.receivedNetworkData(&serverEncryptedExtensionsBytes)
+        XCTAssertNil(try clientStateMachine.processHandshake())
+        XCTAssertEqual(clientStateMachine.peerALPN, "protocolB")
+    }
+
     // MARK: - PQTLS Server Tests
 
     func testPQTLSClientToServerHandshake() throws {

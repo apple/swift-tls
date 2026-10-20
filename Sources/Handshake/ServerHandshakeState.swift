@@ -657,8 +657,12 @@ extension ServerHandshakeState {
                 }
                 return nil
             }
-            for (i, peerProto) in peerALPN.enumerated() {
-                for selfProto in selfALPN {
+            // The server's preference wins: own list in order and take the
+            // first protocol the client also offered. The returned index is the
+            // client's, not ours, as callers use it to tell whether we picked the
+            // client's most preferred protocol.
+            for selfProto in selfALPN {
+                for (i, peerProto) in peerALPN.enumerated() {
                     if selfProto.utf8.elementsEqual(peerProto.utf8) {
                         return (peerProto, i)
                     }

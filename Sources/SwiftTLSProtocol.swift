@@ -220,7 +220,7 @@ fileprivate func epskFromSwiftTLSOptions(_ options: SwiftTLSOptions) throws(Swif
 // Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 fileprivate func clientStateMachineFromTLSOptions(options: SwiftTLSOptions, forQUIC: Bool = true, latestError: inout LatestError?) throws(SwiftTLSError) -> HandshakeStateMachine {
-    guard let applicationProtocols = options.applicationProtocols else {
+    if forQUIC, options.applicationProtocols == nil {
         logger.error("Cannot start the handshake, missing application protocol")
         throw SwiftTLSError.unsupportedOptions
     }
@@ -286,7 +286,7 @@ fileprivate func clientStateMachineFromTLSOptions(options: SwiftTLSOptions, forQ
         let configuration = HandshakeStateMachine.Configuration(
             serverName: options.serverName,
             quicTransportParameters: quicTransportParameters,
-            alpn: applicationProtocols,
+            alpn: options.applicationProtocols,
             fixedKeyExchangeGroup: options.keyExchangeGroup.rawValue,
             supportedCipherSuites: CipherSuite.convertArray(options.supportedCipherSuites),
             signingKey: privateKey,
