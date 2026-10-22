@@ -1330,10 +1330,6 @@ extension HandshakeState {
             return (state, clientFinishedBuffer)
         }
 
-        func generateTLSExporterKey(label: String) -> SymmetricKey? {
-            return self.keyScheduler.generateTLSExporterKey(label: label)
-        }
-
         func generateHashForAuthenticator(transcript: ByteBuffer) -> ByteBuffer {
             return self.keyScheduler.generateHashForAuthenticator(transcript: transcript)
         }

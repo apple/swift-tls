@@ -50,6 +50,27 @@ public enum SwiftTLSError: Error, Equatable {
     case tlsError
 }
 
+/// What a completed TLS handshake publishes about a connection: the counterpart to
+/// ``SwiftTLSOptions``. Owned by SwiftTLS rather than by each embedder, so new facts reach every
+/// embedder without each growing a parallel type. Every field is `nil` before the handshake
+/// completes.
+@_spi(SwiftTLSProtocol)
+// Availability due to `SwiftTLSExporter`'s use of `CryptoKit`'s `HKDF`
+@available(SwiftTLS 0.1.0, *)
+public struct SwiftTLSMetadata {
+    /// Derives exporter key material bound to this connection, per RFC 8446 section 7.5.
+    public let exporter: SwiftTLSExporter?
+
+    public init(exporter: SwiftTLSExporter? = nil) {
+        self.exporter = exporter
+    }
+
+    /// ``exporter`` as a plain-typed function, for embedders that cannot name `SwiftTLSExporter`.
+    public var exportKeyingMaterialFunction: (@Sendable (String, [UInt8], Int) -> [UInt8]?)? {
+        self.exporter?.exportKeyingMaterialFunction
+    }
+}
+
 @_spi(SwiftTLSOptions)
 // Availability due to `CryptoKit`'s `SecureEnclave.P256.Signing.PrivateKey`
 @available(macOS 11, iOS 14, tvOS 14, watchOS 7, *)
@@ -444,6 +465,20 @@ public class SwiftTLSHandshaker {
 
     public var earlyDataAccepted: Bool { false }
 
+    /// Derives exporter key material for this connection, per RFC 8446 section 7.5.
+    ///
+    /// `nil` until the handshake completes. The result is a snapshot: it stays valid, and is safe
+    /// to use from any thread, after this handshaker is gone.
+    public var exporter: SwiftTLSExporter? { nil }
+
+    /// What this handshake has published about the connection. See ``SwiftTLSMetadata``.
+    public var metadata: SwiftTLSMetadata { SwiftTLSMetadata(exporter: self.exporter) }
+
+    /// ``exporter`` as a plain-typed function, for embedders that cannot name `SwiftTLSExporter`.
+    public var exportKeyingMaterialFunction: (@Sendable (String, [UInt8], Int) -> [UInt8]?)? {
+        self.exporter?.exportKeyingMaterialFunction
+    }
+
     public func setupHandshake(options: SwiftTLSOptions) throws(SwiftTLSError) -> [UInt8]? { nil }
     public func continueHandshake(with message: RawSpan? = nil) throws(SwiftTLSError) -> [UInt8]? { nil }
 
@@ -552,6 +587,10 @@ class SwiftTLSClientHandshaker: SwiftTLSHandshaker {
             return 0
         }
         return Int(ciphersuite)
+    }
+
+    override var exporter: SwiftTLSExporter? {
+        return self.stateMachine?.exporter
     }
 
     override var peerQUICTransportParameters: [UInt8]? {
@@ -749,6 +788,10 @@ class SwiftTLSServerHandshaker: SwiftTLSHandshaker {
         return Int(ciphersuite)
     }
 
+    override var exporter: SwiftTLSExporter? {
+        return self.stateMachine?.exporter
+    }
+
     override var peerQUICTransportParameters: [UInt8]? {
         guard let transportParameters = self.stateMachine!.peerQUICTransportParameters else {
             return nil
@@ -833,6 +876,19 @@ public struct SwiftTLSHandshakeAndRecordManager: ~Copyable {
     /// otherwise make a handshake that did complete look as though it never had.
     public var isHandshakeComplete: Bool {
         recordHandler.handshakeStarted && recordHandler.handshakeComplete
+    }
+
+    /// See ``SwiftTLSHandshaker/exporter``.
+    public var exporter: SwiftTLSExporter? {
+        return recordHandler.exporter
+    }
+
+    /// See ``SwiftTLSHandshaker/metadata``.
+    public var metadata: SwiftTLSMetadata { SwiftTLSMetadata(exporter: self.exporter) }
+
+    /// See ``SwiftTLSHandshaker/exportKeyingMaterialFunction``.
+    public var exportKeyingMaterialFunction: (@Sendable (String, [UInt8], Int) -> [UInt8]?)? {
+        self.exporter?.exportKeyingMaterialFunction
     }
 
     public var errorCode: Int32 { errorCodeFromLatestError(latestError) }

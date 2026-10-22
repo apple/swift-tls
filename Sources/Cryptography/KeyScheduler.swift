@@ -118,8 +118,8 @@ struct ClientSessionKeyManager<HF: HashFunction> {
         return try sessionKeyManager.generateSessionTicketPSK(ticketNonce)
     }
 
-    func generateTLSExporterKey(label: String) -> SymmetricKey? {
-        return sessionKeyManager.generateTLSExporterKey(label)
+    var exporter: SwiftTLSExporter? {
+        return sessionKeyManager.exporter
     }
 
     func generateHashForAuthenticator(transcript: ByteBuffer) -> ByteBuffer {
@@ -173,6 +173,10 @@ struct ServerSessionKeyManager<HF: HashFunction> {
 
     var resumptionMasterSecret: SymmetricKey?  {
         return sessionKeyManager.resumptionMasterSecret
+    }
+
+    var exporter: SwiftTLSExporter? {
+        return sessionKeyManager.exporter
     }
 
     mutating func addPreFinishedMessageToTransportHash(_ messageBytes: ByteBuffer) throws(TLSError) {
@@ -506,11 +510,11 @@ fileprivate struct SessionKeyManager<HF: HashFunction> {
         }
     }
 
-    func generateTLSExporterKey(_ label: String) -> SymmetricKey? {
+    var exporter: SwiftTLSExporter? {
         guard let exporterMasterSecret = self.exporterMasterSecret else {
             return nil
         }
-        return HKDF<HF>.tlsExporter(secret: exporterMasterSecret, label: label, context: HF.zeroHash)
+        return SwiftTLSExporter(exporterMasterSecret: exporterMasterSecret, hashFunction: HF.self)
     }
 
     func generateHashForAuthenticator(_ transcript: ByteBuffer) -> ByteBuffer {
