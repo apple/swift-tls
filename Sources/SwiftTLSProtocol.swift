@@ -463,6 +463,12 @@ public class SwiftTLSHandshaker {
 
     public var peerQUICTransportParameters: [UInt8]? { nil }
 
+    /// The application protocol the handshake negotiated, if any.
+    ///
+    /// Returns `nil` until the negotiation has happened. QUIC requires ALPN, so a completed QUIC
+    /// handshake always has a value here.
+    public var negotiatedApplicationProtocol: String? { nil }
+
     public var earlyDataAccepted: Bool { false }
 
     /// Derives exporter key material for this connection, per RFC 8446 section 7.5.
@@ -598,6 +604,10 @@ class SwiftTLSClientHandshaker: SwiftTLSHandshaker {
             return nil
         }
         return [UInt8](transportParameters.readableBytesView)
+    }
+
+    override var negotiatedApplicationProtocol: String? {
+        return self.stateMachine?.peerALPN
     }
 
     override var earlyDataAccepted: Bool {
@@ -798,6 +808,10 @@ class SwiftTLSServerHandshaker: SwiftTLSHandshaker {
         }
         return [UInt8](transportParameters.readableBytesView)
     }
+
+    override var negotiatedApplicationProtocol: String? {
+        return self.stateMachine?.negotiatedALPN
+    }
 }
 
 #endif
@@ -892,6 +906,15 @@ public struct SwiftTLSHandshakeAndRecordManager: ~Copyable {
     }
 
     public var errorCode: Int32 { errorCodeFromLatestError(latestError) }
+
+    /// The application protocol the handshake negotiated, if any.
+    ///
+    /// Returns `nil` until the negotiation has happened, and for a connection where neither peer
+    /// offered ALPN. ALPN is optional over TCP, so `nil` on a completed handshake means the
+    /// application protocol has to be determined by other means.
+    public var negotiatedApplicationProtocol: String? {
+        recordHandler.negotiatedALPN
+    }
 
     public var alertSentOrReceived: Bool {
         return recordHandler.alertSentOrReceived
