@@ -171,6 +171,20 @@ struct TLSRecordHandler: ~Copyable {
         }
     }
 
+    /// The application protocol the handshake negotiated, if any.
+    ///
+    /// A client reports what the server selected; a server reports its own selection.
+    var negotiatedALPN: ApplicationLayerProtocol? {
+        switch self.stateMachine {
+        case .client(let clientHandshakeStateMachine):
+            return clientHandshakeStateMachine.peerALPN
+#if !SWIFTTLS_CLIENT_ONLY
+        case .server(let serverHandshakeStateMachine):
+            return serverHandshakeStateMachine.negotiatedALPN
+#endif
+        }
+    }
+
     private var maxFragmentLength: UInt16 {
         return maxPlaintextFragmentLength
     }

@@ -206,6 +206,10 @@ class SwiftTLSProtocolTests: XCTestCase {
         XCTAssertNil(res)
         XCTAssertEqual(server.readEncryptionLevel, .application)
         XCTAssertEqual(server.writeEncryptionLevel, .application)
+
+        // The client offered foo and bar, the server supports only bar.
+        XCTAssertEqual(server.negotiatedApplicationProtocol, "bar")
+        XCTAssertEqual(client.negotiatedApplicationProtocol, "bar")
     }
 
     /// A peer that closes its write side in the same flight as its last handshake message leaves
@@ -258,6 +262,83 @@ class SwiftTLSProtocolTests: XCTestCase {
             payload,
             "the data the handshake protected has to be readable"
         )
+    }
+
+    /// ALPN is optional over TCP: a client that sets no application protocols
+    /// omits the extension and the handshake still completes.
+    func testTCPClientWithoutALPNCompletesHandshake() throws {
+        var clientOptions = defaultClientOptions(quic: false)
+        clientOptions.applicationProtocols = nil
+        let serverOptions = defaultServerOptions(quic: false)
+
+        var client = try SwiftTLSHandshakeAndRecordManager(options: clientOptions, isServer: false)
+        var server = try SwiftTLSHandshakeAndRecordManager(options: serverOptions, isServer: true)
+
+        try client.startHandshake()
+        guard var clientHello = client.getOutput(numBytes: client.outgoingBytesCount) else {
+            XCTFail("no client hello")
+            return
+        }
+        try clientHello.withUnsafeMutableBytes { try server.processNetworkData(networkDataIn: $0) }
+        guard var serverFlight = server.getOutput(numBytes: server.outgoingBytesCount) else {
+            XCTFail("no server flight")
+            return
+        }
+        try serverFlight.withUnsafeMutableBytes { try client.processNetworkData(networkDataIn: $0) }
+        XCTAssertTrue(client.isHandshakeComplete, "a TCP client may omit ALPN")
+
+        guard var clientFlight = client.getOutput(numBytes: client.outgoingBytesCount) else {
+            XCTFail("no client flight")
+            return
+        }
+        try clientFlight.withUnsafeMutableBytes { try server.processNetworkData(networkDataIn: $0) }
+        XCTAssertTrue(server.isHandshakeComplete, "the server accepted a ClientHello with no ALPN")
+
+        XCTAssertNil(client.negotiatedApplicationProtocol, "no ALPN was offered, so none was negotiated")
+        XCTAssertNil(server.negotiatedApplicationProtocol, "no ALPN was offered, so none was negotiated")
+    }
+
+    /// Both peers report the negotiated protocol once the handshake has exchanged it.
+    func testNegotiatedApplicationProtocolIsReportedOverTCP() throws {
+        // The client offers foo and bar; the server supports only bar.
+        let clientOptions = defaultClientOptions(quic: false)
+        let serverOptions = defaultServerOptions(quic: false)
+
+        var client = try SwiftTLSHandshakeAndRecordManager(options: clientOptions, isServer: false)
+        var server = try SwiftTLSHandshakeAndRecordManager(options: serverOptions, isServer: true)
+
+        XCTAssertNil(client.negotiatedApplicationProtocol, "nothing is negotiated before the handshake")
+        XCTAssertNil(server.negotiatedApplicationProtocol, "nothing is negotiated before the handshake")
+
+        try client.startHandshake()
+        guard var clientHello = client.getOutput(numBytes: client.outgoingBytesCount) else {
+            XCTFail("no client hello")
+            return
+        }
+        try clientHello.withUnsafeMutableBytes { try server.processNetworkData(networkDataIn: $0) }
+
+        // The server picks on reading the ClientHello, before its own flight goes out.
+        XCTAssertEqual(server.negotiatedApplicationProtocol, "bar")
+
+        guard var serverFlight = server.getOutput(numBytes: server.outgoingBytesCount) else {
+            XCTFail("no server flight")
+            return
+        }
+        try serverFlight.withUnsafeMutableBytes { try client.processNetworkData(networkDataIn: $0) }
+
+        XCTAssertTrue(client.isHandshakeComplete)
+        XCTAssertEqual(client.negotiatedApplicationProtocol, "bar", "the client reports the server's selection")
+    }
+
+    /// QUIC requires ALPN, so omitting it there is still a configuration error.
+    func testQUICClientWithoutALPNIsRejected() throws {
+        var clientOptions = defaultClientOptions(quic: true)
+        clientOptions.applicationProtocols = nil
+
+        let client = SwiftTLSClientHandshaker()
+        XCTAssertThrowsError(try client.setupHandshake(options: clientOptions)) { error in
+            XCTAssertEqual(error as? SwiftTLSError, .unsupportedOptions)
+        }
     }
 
     func runHandshakerHappyPath_NoEarlyData_MutualRPK(clientOptions: SwiftTLSOptions, serverOptions: SwiftTLSOptions) throws {

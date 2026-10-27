@@ -230,6 +230,42 @@ struct ServerHandshakeStateMachine {
         }
     }
 
+    /// Obtain the application protocol this server selected, if any.
+    ///
+    /// Returns `nil` if no protocol was negotiated, or if the handshake has not progressed to the
+    /// point of having a value yet.
+    var negotiatedALPN: ApplicationLayerProtocol? {
+        switch self.state {
+        case .idle:
+            return nil
+        case .clientHello(let clientHello):
+            return clientHello.selectedALPN
+        case .serverHello(let serverHello):
+            return serverHello.selectedALPN
+        case .serverEncryptedExtensions(let extensions):
+            return extensions.selectedALPN
+        case .serverCertificateRequest(let certificateRequest):
+            return certificateRequest.selectedALPN
+        case .awaitingCertificate(let awaitingCertificate):
+            return awaitingCertificate.selectedALPN
+        case .serverCertificate(let certificate):
+            return certificate.selectedALPN
+        case .awaitingSignature(let awaitingSignature):
+            return awaitingSignature.selectedALPN
+        case .serverCertificateVerify(let certificateVerify):
+            return certificateVerify.selectedALPN
+        case .serverFinished(let finished):
+            return finished.selectedALPN
+        case .clientCertificate(let clientCert):
+            return clientCert.selectedALPN
+        case .clientCertificateVerify(let clientCertVerify):
+            return clientCertVerify.selectedALPN
+        case .readyForData(let ready):
+            return ready.selectedALPN
+        }
+    }
+    
+    
     /// Obtain the negotiated ciphersuite, if any.
     ///
     /// Note that this value may change as the handshake progresses if session resumption was
