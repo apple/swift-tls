@@ -15,13 +15,13 @@
 import XCTest
 import Synchronization
 
-#if os(Linux)
-import Crypto
-#else
+#if canImport(CryptoKit)
 import CryptoKit
+#elseif canImport(Crypto)
+import Crypto
 #endif
-#if canImport(SwiftTLS) && (os(Linux) || !canImport(CryptoKitPrivate))
-// For importing the SwiftTLS package on the public SDK or on Linux
+#if canImport(SwiftTLS) && !canImport(CryptoKitPrivate)
+// For importing the SwiftTLS package on the public SDK or on non-Darwin
 @testable @_spi(SwiftTLSProtocol) import SwiftTLS
 #endif
 
