@@ -264,6 +264,8 @@ struct ServerHandshakeStateMachine {
             return clientCert.selectedALPN
         case .clientCertificateVerify(let clientCertVerify):
             return clientCertVerify.selectedALPN
+        case .awaitingClientVerification(let awaitingClientVerification):
+            return awaitingClientVerification.selectedALPN
         case .readyForData(let ready):
             return ready.selectedALPN
         }

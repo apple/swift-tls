@@ -205,6 +205,21 @@ struct TLSRecordHandler: ~Copyable {
         }
     }
 
+    /// `true` while the handshake is suspended waiting for an application callback.
+    ///
+    /// Records that arrive during the pause must stay buffered: the handshake cannot act on
+    /// them yet, and application data must not be accepted until the peer is authenticated.
+    var awaitingAsyncComputation: Bool {
+        switch self.stateMachine {
+        case .client(let clientHandshakeStateMachine):
+            return clientHandshakeStateMachine.awaitingAsyncComputation
+#if !SWIFTTLS_CLIENT_ONLY
+        case .server(let serverHandshakeStateMachine):
+            return serverHandshakeStateMachine.awaitingAsyncComputation
+#endif
+        }
+    }
+
     var handshakeStarted: Bool {
         switch self.stateMachine {
         case .client(let clientHandshakeStateMachine):
@@ -489,6 +504,9 @@ struct TLSRecordHandler: ~Copyable {
 
     mutating func continueHandshake() throws(TLSError) {
         try self.processHandshakeInput(RawSpan())
+        // Records that arrived while the handshake was suspended are still buffered.
+        var noAdditionalData = ByteBuffer()
+        try self.processNetworkData(networkDataIn: &noAdditionalData)
     }
 
     private mutating func sendApplicationData() throws(TLSError) {
@@ -696,8 +714,10 @@ struct TLSRecordHandler: ~Copyable {
         do {
             try networkDataIn.rewindOnNilOrError {(buffer: inout ByteBuffer) throws(TLSError) in
                 self.recordParser.appendBytes(&buffer)
-                // parse records until we've exhausted the buffer or can't parse a full record
-                while self.recordParser.numberOfBytesBuffered > 0 {
+                // Parse records until we've exhausted the buffer, can't parse a full record,
+                // or the handshake suspends. Anything left stays buffered in the record
+                // parser and is drained by `continueHandshake()` once the callback answers.
+                while self.recordParser.numberOfBytesBuffered > 0, !self.awaitingAsyncComputation {
                     if let record = try self.parseOneRecord() {
                         switch record {
                         case .ciphertext(let ciphertext):

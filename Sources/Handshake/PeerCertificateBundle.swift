@@ -243,19 +243,6 @@ extension PeerCertificateBundle {
         }
     }()
 
-    /// The certificate types this peer can provide to its peer.
-    ///
-    /// The client offers this in the client hello under `client_certificate_types` when it is
-    /// configured with a raw public key. The server uses this list to determine whether it
-    /// supports any of the offered certificate types in `client_certificate_types`.
-    static let availableCertificateTypes: Extension.CertificateTypeExt = {
-            // we don't offer .x509 even when we support
-            // unverified x509 because that only involves whether
-            // we have insecure verification enabled, we don't
-            // have support to configure an x509 certificate
-            // at all.
-            return Extension.CertificateTypeExt.offer([.rawPublicKey])
-    }()
 }
 
 // Availability due to `RawSpan`

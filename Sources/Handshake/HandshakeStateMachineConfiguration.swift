@@ -45,6 +45,38 @@ public enum SwiftTLSPrivateKey: Sendable {
     case opaqueReference(SwiftTLSOpaqueReferenceKey)
 }
 
+/// How a server treats client authentication.
+///
+/// A struct rather than an enum so that policies can be added later without breaking
+/// callers that have already switched over the existing ones.
+@_spi(SwiftTLSOptions)
+public struct ClientAuthenticationPolicy: Sendable, Hashable {
+    enum Storage: Sendable, Hashable {
+        case disabled
+        case required
+    }
+    var storage: Storage
+
+    /// Do not request a certificate from the client.
+    public static let disabled = ClientAuthenticationPolicy(storage: .disabled)
+
+    /// Request a certificate from the client and fail the handshake if it does not
+    /// present one.
+    ///
+    /// RFC 8446 also permits requesting a certificate while accepting a client that
+    /// presents none; that policy is not implemented yet.
+    public static let required = ClientAuthenticationPolicy(storage: .required)
+}
+
+extension ClientAuthenticationPolicy: CustomStringConvertible {
+    public var description: String {
+        switch storage {
+        case .disabled: return ".disabled"
+        case .required: return ".required"
+        }
+    }
+}
+
 // Availability due to `RawSpan`
 @available(SwiftTLS 0.1.0, *)
 extension HandshakeStateMachine {
@@ -173,10 +205,8 @@ extension HandshakeStateMachine {
         var providableClientCertificateTypes: [CertificateType] {
             switch authenticationMethod {
             case .rawPublicKeyAuth:
-                guard case .offer(let types) = PeerCertificateBundle.availableCertificateTypes else {
-                    return []
-                }
-                return types
+                // A raw public key signing key can only ever present a raw public key.
+                return [.rawPublicKey]
             case .certificateAuthCallbacks(let asyncAuthenticator):
                 return asyncAuthenticator.providableCertificateTypes
             case .noAuthAvailable, .externalPreSharedKeyAuth:
@@ -195,7 +225,8 @@ extension HandshakeStateMachine {
             useRawEPSKs: Bool,
             supportedCipherSuites: [CipherSuite]?,
             asyncVerifier: AsyncVerifier?,
-            asyncAuthenticator: AsyncAuthenticator?
+            asyncAuthenticator: AsyncAuthenticator?,
+            fallbackAuthentication: AuthenticationMethod? = nil
         ) throws(TLSError) -> (authentication: AuthenticationMethod, verification: VerificationMethod) {
             let verification: VerificationMethod
             if let validPeerPublicKeys, !validPeerPublicKeys.isEmpty {
@@ -239,6 +270,10 @@ extension HandshakeStateMachine {
                 }
             } else if let asyncAuthenticator {
                 authentication = .certificateAuthCallbacks(asyncAuthenticator)
+            } else if let fallbackAuthentication, case .none = verification {
+                // Only applies when nothing else is configured and there is nothing to
+                // verify, so it cannot mask a failure found above.
+                authentication = fallbackAuthentication
             } else {
                 authentication = .noAuthAvailable
             }
@@ -268,15 +303,6 @@ extension HandshakeStateMachine {
             }
         }
 
-        // TODO: remove once the client can present a certificate.
-        static func isImplemented(_ authentication: AuthenticationMethod, _ verification: VerificationMethod) -> Bool {
-            if case .certificateAuthCallbacks = authentication {
-                logger.error("CONFIGURATION: client authentication with certificate callbacks is not supported yet")
-                return false
-            }
-            return true
-        }
-
         init(
             serverName: String? = nil,
             quicTransportParameters: ByteBuffer? = nil,
@@ -290,7 +316,8 @@ extension HandshakeStateMachine {
             useRawEPSKs: Bool = false,
             enableEarlyData: Bool = false,
             asyncVerifier: AsyncVerifier? = nil,
-            asyncAuthenticator: AsyncAuthenticator? = nil
+            asyncAuthenticator: AsyncAuthenticator? = nil,
+            fallbackAuthentication: AuthenticationMethod? = nil
         ) {
             self.serverName = serverName
             self.quicTransportParameters = quicTransportParameters
@@ -306,13 +333,13 @@ extension HandshakeStateMachine {
                     useRawEPSKs: useRawEPSKs,
                     supportedCipherSuites: supportedCipherSuites,
                     asyncVerifier: asyncVerifier,
-                    asyncAuthenticator: asyncAuthenticator
+                    asyncAuthenticator: asyncAuthenticator,
+                    fallbackAuthentication: fallbackAuthentication
                 )
                 self.authenticationMethod = authentication
                 self.verificationMethod = verification
 
-                guard Self.validate(authentication, verification),
-                      Self.isImplemented(authentication, verification) else {
+                guard Self.validate(authentication, verification) else {
                     self.validConfiguration = false
                     return
                 }

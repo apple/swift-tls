@@ -135,7 +135,15 @@ public struct SwiftTLSOptions: Sendable {
 
     // Whether the server requires the client to authenticate.
     // If set with raw public keys will send a "Certificate Request" message.
-    public var clientAuthRequired: Bool = false
+    public var clientAuthentication: ClientAuthenticationPolicy = .disabled
+
+    // Compatibility shim for callers that have not moved to `clientAuthentication`.
+    // Not marked deprecated yet: warnings are treated as build failures in some
+    // configurations, so the attribute goes on once the remaining callers migrate.
+    public var clientAuthRequired: Bool {
+        get { clientAuthentication == .required }
+        set { clientAuthentication = newValue ? .required : .disabled }
+    }
 
     public struct ExternalPSK: Sendable {
         let externalIdentity: [UInt8]
@@ -381,7 +389,7 @@ fileprivate func serverStateMachineFromTLSOptions(options: SwiftTLSOptions, forQ
                 validPeerPublicKeys: keys,
                 supportedCipherSuites: CipherSuite.convertArray(options.supportedCipherSuites),
                 epsks: epsks,
-                clientAuthRequired: options.clientAuthRequired,
+                clientAuthentication: options.clientAuthentication,
                 enableEarlyData: options.enableEarlyData,
                 asyncAuthenticator: options.asyncAuthenticator,
                 asyncVerifier: options.asyncVerifier

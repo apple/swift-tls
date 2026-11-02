@@ -166,6 +166,8 @@ enum ServerHandshakeState {
         switch self {
         case .serverEncryptedExtensions(let state):
             self = .awaitingCertificate(AwaitingCertificateState(originalState: state, asyncAuthenticator: asyncAuthenticator, certInfo: certInfo))
+        case .serverCertificateRequest(let state):
+            self = .awaitingCertificate(AwaitingCertificateState(originalState: state, asyncAuthenticator: asyncAuthenticator, certInfo: certInfo))
         default:
             preconditionFailure()
         }
@@ -174,6 +176,10 @@ enum ServerHandshakeState {
     mutating func sendingServerCertificate(withCertificates certificates: [Data], authDetails: AuthenticationDetails) throws(TLSError) -> PartialHandshakeResult {
         switch self {
         case .serverEncryptedExtensions(let state):
+            let (newState, serverCertificateBytes) = try ServerCertificateState.sendingServerCertificate(originalState: state, withCertificates: certificates, authDetails: authDetails)
+            self = .serverCertificate(newState)
+            return PartialHandshakeResult(handshakeBytesToSend: serverCertificateBytes)
+        case .serverCertificateRequest(let state):
             let (newState, serverCertificateBytes) = try ServerCertificateState.sendingServerCertificate(originalState: state, withCertificates: certificates, authDetails: authDetails)
             self = .serverCertificate(newState)
             return PartialHandshakeResult(handshakeBytesToSend: serverCertificateBytes)
@@ -370,8 +376,6 @@ extension ServerHandshakeState {
         var clientALPN: [ApplicationLayerProtocol]? = nil
         var clientOfferedPSKs: Extension.PreSharedKey.OfferedPSKs? = nil
         var clientIndicatedEarlyData: Bool = false
-        /// Set by `validateExtensions()`. `nil` when the client did not offer the extension.
-        var negotiatedServerCertificateType: CertificateType? = nil
         let serverSupportedGroups: [NamedGroup]
         let serverSupportedSignatureAlgs: [SignatureScheme] /* must include at least one element */
         let providableServerCertificateTypes: [CertificateType]
@@ -611,36 +615,63 @@ extension ServerHandshakeState {
             }
         }
 
+        /// First type the client offered that this server also supports, or `nil` when the
+        /// client did not offer the extension or the two lists do not overlap.
+        ///
+        /// What no overlap means differs between the two extensions, so that is left to the
+        /// callers rather than decided here.
+        private func firstCommonCertificateType(
+            clientRequested: [CertificateType]?,
+            supported: [CertificateType]
+        ) -> CertificateType? {
+            guard let clientRequested else {
+                return nil
+            }
+            return clientRequested.first { supported.contains($0) }
+        }
+
         func negotiateServerCertificateType() throws(TLSError) -> CertificateType? {
-            // An empty list is treated as if the extension was absent.
-            guard let clientRequestedServerCertificateTypes, !clientRequestedServerCertificateTypes.isEmpty else {
+            // Absent means the client offered no alternative to X.509: RFC 7250 section 4.1
+            // requires it to omit the extension when it has nothing to offer "other than the
+            // default X.509 type". The RFC does not spell out the server's side of that, but
+            // it is the only reading the client's obligation leaves open.
+            // An empty list cannot reach here: the parser rejects it as malformed.
+            guard let clientRequestedServerCertificateTypes else {
                 return nil
             }
 
-            for certType in clientRequestedServerCertificateTypes {
-                if providableServerCertificateTypes.contains(certType) {
-                    return certType
-                }
+            // This server sends no Certificate message at all — an EPSK — so there is no type
+            // to agree on and the extension is omitted from the server hello. Failing here
+            // would reject a client over a certificate never going to be sent.
+            guard !providableServerCertificateTypes.isEmpty else {
+                return nil
             }
 
-            // If the server has no certificate type in common with the client, it
-            // terminates the session with a fatal alert of type "unsupported_certificate".
-            logger.error("client requested unsupported server certificate type")
-            throw TLSError.unsupportedCertificate
+            guard let commonType = firstCommonCertificateType(
+                clientRequested: clientRequestedServerCertificateTypes,
+                supported: providableServerCertificateTypes
+            ) else {
+                // RFC 7250 section 4.2: with no type in common the server cannot authenticate
+                // itself at all, so it "terminates the session with a fatal alert of type
+                // unsupported_certificate".
+                logger.error("client requested unsupported server certificate type")
+                throw TLSError.unsupportedCertificate
+            }
+            return commonType
         }
 
-        func negotiateClientCertificateType() throws(TLSError) -> CertificateType? {
-            var commonClientCertType: CertificateType? = nil
-            // Process client_certificate_type extension
-            if let clientRequestedClientCertificateTypes {
-                for certType in clientRequestedClientCertificateTypes {
-                    if verifiableClientCertificateTypes.contains(certType) {
-                        commonClientCertType = certType
-                        break
-                    }
-                }
-            }
-            return commonClientCertType
+        /// Deliberately does not fail when there is no common type, unlike
+        /// `negotiateServerCertificateType()`.
+        ///
+        /// RFC 7250 section 4.2 has the server omit `client_certificate_type` from its hello
+        /// in that case rather than ending the session, because the handshake can still
+        /// proceed without client authentication. Whether the absence is fatal depends on
+        /// whether this server requires client authentication, which the caller checks.
+        func negotiateClientCertificateType() -> CertificateType? {
+            firstCommonCertificateType(
+                clientRequested: clientRequestedClientCertificateTypes,
+                supported: verifiableClientCertificateTypes
+            )
         }
 
         func negotiateGroup() throws(TLSError) -> NamedGroup? {
@@ -679,10 +710,9 @@ extension ServerHandshakeState {
             return clientKeyShare
         }
 
-        mutating func validateExtensions() throws(TLSError) {
+        func validateExtensions() throws(TLSError) {
             try validateSupportedVersions()
             try validateSupportedGroups()
-            self.negotiatedServerCertificateType = try negotiateServerCertificateType()
             try validateKeyShares()
             try validatePSKKexModes()
         }
@@ -859,13 +889,13 @@ extension ServerHandshakeState {
             // Negotiate ciphersuite - this always happens
             let negotiatedCipherSuite = try negotiateCipherSuite(clientHello.cipherSuites, serverSupportedCipherSuites)
 
-            // Non-nil ONLY if the client sent a server certificate type extension and the server negotiated a common one
-            let negotiatedServerCertificateType = clientHelloVerifier.negotiatedServerCertificateType
-
-            // Non-nil ONLY if the client sent a client_certificate_type extension and the server negotiated a common one
-            let negotiatedClientCertificateType = try clientHelloVerifier.negotiateClientCertificateType()
+            // Both are non-nil ONLY if the client sent the corresponding extension and this
+            // server has a type in common with it.
+            let negotiatedServerCertificateType = try clientHelloVerifier.negotiateServerCertificateType()
+            let negotiatedClientCertificateType = clientHelloVerifier.negotiateClientCertificateType()
             // When requiring client auth, the type the client will send must be one we can verify.
-            // A client that sent no extension will send x509, per RFC 7250.
+            // A client that sent no extension has nothing to offer beyond the default X.509
+            // type, which RFC 7250 section 4.1 requires it to signal by omission.
             if idleState.configuration.clientAuthRequired {
                 let expectedClientCertificateType = negotiatedClientCertificateType ?? .x509
                 guard clientHelloVerifier.verifiableClientCertificateTypes.contains(expectedClientCertificateType) else {

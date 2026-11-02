@@ -98,7 +98,7 @@ class TLSRecordHandlerTests: XCTestCase {
                     signingKey: .p256(serverSigningKey),
                     validPeerPublicKeys: nil,
                     useRawEPSKs: false,
-                    clientAuthRequired: false,
+                    clientAuthentication: .disabled,
                     enableEarlyData: false,
                 )
     }
@@ -113,7 +113,7 @@ class TLSRecordHandlerTests: XCTestCase {
                     signingKey: .p256(serverSigningKey),
                     validPeerPublicKeys: [clientSigningKey.publicKey],
                     useRawEPSKs: false,
-                    clientAuthRequired: true,
+                    clientAuthentication: .required,
                     enableEarlyData: false,
                 )
     }
@@ -778,7 +778,7 @@ class TLSRecordHandlerTests: XCTestCase {
             validPeerPublicKeys: nil,
             epsks: [epsk],
             useRawEPSKs: false,
-            clientAuthRequired: false,
+            clientAuthentication: .disabled,
             enableEarlyData: false
         )
         let serverStateMachine = try ServerHandshakeStateMachine(configuration: serverConfig)
@@ -1307,4 +1307,179 @@ class TLSRecordHandlerTests: XCTestCase {
         try serverRecordHandler.processNetworkData(networkDataIn: &clientRecordHandler.outgoingBytes)
         XCTAssertEqual(serverRecordHandler.receivedApplicationData, testData)
     }
+
+    // A client's second flight and its first application data can arrive together, while the
+    // server is still waiting on an asynchronous client-verification callback. The record
+    // layer must leave those records buffered rather than consuming them: application data
+    // cannot be accepted before the peer is authenticated, and rejecting it outright would
+    // tear down a perfectly good connection.
+    func testRecordsArrivingWhileClientVerificationIsPending() throws {
+        let dummySignatureAlgorithm = SignatureScheme.ecdsa_secp256r1_sha256.rawValue
+        let dummySignature = Data(repeating: 0xAB, count: 64)
+        let dummyCertificates = [Data(repeating: 0xCD, count: 128)]
+        let clientKey = P256.Signing.PrivateKey()
+
+        // The server defers its verdict on the client's certificate.
+        let capturedVerifyClosure = Mutex<(@Sendable (VerificationResult) -> Void)?>(nil)
+
+        let serverConfig = ServerHandshakeStateMachine.Configuration(
+            alpn: ["proto A", "proto B"],
+            transportIsQUIC: false,
+            clientAuthentication: .required,
+            asyncAuthenticator: AsyncAuthenticator(
+                providableCertificateTypes: [.x509],
+                getCertificateChain: { _ in .available(.init(type: .x509, entries: dummyCertificates)) },
+                signTranscriptHash: { _ in .available(signature: dummySignature, algorithm: dummySignatureAlgorithm) }
+            ),
+            asyncVerifier: AsyncVerifier(
+                verifiableCertificateTypes: [.rawPublicKey],
+                verificationCallback: { info in
+                    capturedVerifyClosure.withLock { $0 = info.deliverResult }
+                    return .waiting
+                }
+            )
+        )
+
+        let clientConfig = HandshakeStateMachine.Configuration(
+            alpn: ["proto A"],
+            fixedKeyExchangeGroup: NamedGroup.secp384.rawValue,
+            signingKey: .p256(clientKey),
+            asyncVerifier: AsyncVerifier(
+                verifiableCertificateTypes: [.x509],
+                verificationCallback: { _ in .valid }
+            )
+        )
+
+        var clientRecordHandler = TLSRecordHandler(stateMachine: .client(try HandshakeStateMachine(configuration: clientConfig)))
+        var serverRecordHandler = TLSRecordHandler(stateMachine: .server(try ServerHandshakeStateMachine(configuration: serverConfig)))
+
+        let pendingResultMutex = Mutex<PendingAsyncResult?>(nil)
+        serverRecordHandler.setDeliverResultCallback { result in
+            pendingResultMutex.withLock { $0 = result }
+        }
+
+        // ClientHello, then the server's whole first flight.
+        try clientRecordHandler.startHandshake()
+        try serverRecordHandler.processNetworkData(networkDataIn: &clientRecordHandler.outgoingBytes)
+
+        // The client consumes it and emits Certificate + CertificateVerify + Finished. It
+        // considers the handshake complete at that point, so it can send application data.
+        try clientRecordHandler.processNetworkData(networkDataIn: &serverRecordHandler.outgoingBytes)
+        XCTAssertTrue(clientRecordHandler.handshakeComplete)
+
+        let applicationData = ByteBuffer("hello from an as-yet-unverified client")
+        var applicationDataCopy = applicationData
+        try clientRecordHandler.addApplicationData(&applicationDataCopy)
+
+        // The second flight and the application data now reach the server together. The
+        // server suspends on the client's CertificateVerify; this must not throw.
+        try serverRecordHandler.processNetworkData(networkDataIn: &clientRecordHandler.outgoingBytes)
+
+        XCTAssertTrue(serverRecordHandler.awaitingAsyncComputation)
+        XCTAssertFalse(serverRecordHandler.handshakeComplete)
+        // The application data is still undecrypted, so nothing is available to the caller.
+        XCTAssertEqual(serverRecordHandler.receivedApplicationData.readableBytes, 0)
+
+        // The verdict arrives.
+        let deliverVerification = capturedVerifyClosure.withLock { $0 }
+        XCTAssertNotNil(deliverVerification)
+        deliverVerification!(.valid)
+
+        let pendingResult = pendingResultMutex.withLock { $0 }
+        XCTAssertNotNil(pendingResult)
+        serverRecordHandler.applyAsyncResult(pendingResult!)
+        try serverRecordHandler.continueHandshake()
+
+        // Resuming drains the records that were held: the client's Finished completes the
+        // handshake, and only then is the buffered application data delivered.
+        XCTAssertFalse(serverRecordHandler.awaitingAsyncComputation)
+        XCTAssertTrue(serverRecordHandler.handshakeComplete)
+        XCTAssertEqual(serverRecordHandler.receivedApplicationData, applicationData)
+    }
+
+    func testDeliveredInvalidClientVerificationFailsHandshake() throws {
+        let dummySignatureAlgorithm = SignatureScheme.ecdsa_secp256r1_sha256.rawValue
+        let dummySignature = Data(repeating: 0xAB, count: 64)
+        let dummyCertificates = [Data(repeating: 0xCD, count: 128)]
+        let clientKey = P256.Signing.PrivateKey()
+
+        // The server defers its verdict on the client's certificate.
+        let capturedVerifyClosure = Mutex<(@Sendable (VerificationResult) -> Void)?>(nil)
+
+        let serverConfig = ServerHandshakeStateMachine.Configuration(
+            alpn: ["proto A", "proto B"],
+            transportIsQUIC: false,
+            clientAuthentication: .required,
+            asyncAuthenticator: AsyncAuthenticator(
+                providableCertificateTypes: [.x509],
+                getCertificateChain: { _ in .available(.init(type: .x509, entries: dummyCertificates)) },
+                signTranscriptHash: { _ in .available(signature: dummySignature, algorithm: dummySignatureAlgorithm) }
+            ),
+            asyncVerifier: AsyncVerifier(
+                verifiableCertificateTypes: [.rawPublicKey],
+                verificationCallback: { info in
+                    capturedVerifyClosure.withLock { $0 = info.deliverResult }
+                    return .waiting
+                }
+            )
+        )
+
+        let clientConfig = HandshakeStateMachine.Configuration(
+            alpn: ["proto A"],
+            fixedKeyExchangeGroup: NamedGroup.secp384.rawValue,
+            signingKey: .p256(clientKey),
+            asyncVerifier: AsyncVerifier(
+                verifiableCertificateTypes: [.x509],
+                verificationCallback: { _ in .valid }
+            )
+        )
+
+        var clientRecordHandler = TLSRecordHandler(stateMachine: .client(try HandshakeStateMachine(configuration: clientConfig)))
+        var serverRecordHandler = TLSRecordHandler(stateMachine: .server(try ServerHandshakeStateMachine(configuration: serverConfig)))
+
+        let pendingResultMutex = Mutex<PendingAsyncResult?>(nil)
+        serverRecordHandler.setDeliverResultCallback { result in
+            pendingResultMutex.withLock { $0 = result }
+        }
+
+        // ClientHello, then the server's whole first flight.
+        try clientRecordHandler.startHandshake()
+        try serverRecordHandler.processNetworkData(networkDataIn: &clientRecordHandler.outgoingBytes)
+
+        // The client consumes it and emits Certificate + CertificateVerify + Finished. It
+        // considers the handshake complete at that point, so it can send application data.
+        try clientRecordHandler.processNetworkData(networkDataIn: &serverRecordHandler.outgoingBytes)
+        XCTAssertTrue(clientRecordHandler.handshakeComplete)
+
+        let applicationData = ByteBuffer("hello from an as-yet-unverified client")
+        var applicationDataCopy = applicationData
+        try clientRecordHandler.addApplicationData(&applicationDataCopy)
+
+        // The second flight and the application data now reach the server together. The
+        // server suspends on the client's CertificateVerify; this must not throw.
+        try serverRecordHandler.processNetworkData(networkDataIn: &clientRecordHandler.outgoingBytes)
+
+        XCTAssertTrue(serverRecordHandler.awaitingAsyncComputation)
+        XCTAssertFalse(serverRecordHandler.handshakeComplete)
+        // The application data is still undecrypted, so nothing is available to the caller.
+        XCTAssertEqual(serverRecordHandler.receivedApplicationData.readableBytes, 0)
+
+        // The verdict arrives, and it rejects the client.
+        let deliverVerification = capturedVerifyClosure.withLock { $0 }
+        XCTAssertNotNil(deliverVerification)
+        deliverVerification!(.invalid(reason: "client not authorized"))
+
+        let pendingResult = pendingResultMutex.withLock { $0 }
+        XCTAssertNotNil(pendingResult)
+        serverRecordHandler.applyAsyncResult(pendingResult!)
+
+        // Resuming must fail the handshake rather than complete it, and the application data
+        // the client already sent must never be handed to the caller.
+        XCTAssertThrowsError(try serverRecordHandler.continueHandshake()) { error in
+            XCTAssertEqual(error as? TLSError, .certificateError)
+        }
+        XCTAssertFalse(serverRecordHandler.handshakeComplete)
+        XCTAssertEqual(serverRecordHandler.receivedApplicationData.readableBytes, 0)
+    }
+
 }

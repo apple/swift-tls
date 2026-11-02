@@ -53,6 +53,19 @@ extension ServerHandshakeStateMachine {
         case externalPreSharedKeyAuthCallback(externalPSKSelectionCallback)
 
         case certificateAuthCallbacks(AsyncAuthenticator)
+
+        /// Whether a handshake using this method exchanges certificates at all.
+        ///
+        /// An EPSK authenticates both peers by itself and sends no
+        /// `CertificateRequest`, so client authentication has nothing to attach to.
+        var exchangesCertificates: Bool {
+            switch self {
+            case .noAuthAvailable, .rawPublicKeyAuth, .certificateAuthCallbacks:
+                return true
+            case .externalPreSharedKeyAuth, .externalPreSharedKeyAuthCallback:
+                return false
+            }
+        }
     }
 
     enum VerificationMethod {
@@ -153,14 +166,18 @@ extension ServerHandshakeStateMachine {
         }
 
         /// The certificate types this server can present, negotiated via `server_certificate_type`.
+        ///
+        /// Empty when this server presents no certificate at all, which is the case for an EPSK.
+        /// There is then nothing to negotiate and the extension is omitted.
         var providableServerCertificateTypes: [CertificateType] {
+            guard authenticationMethod.exchangesCertificates else {
+                return []
+            }
             if let asyncAuthenticator {
                 return asyncAuthenticator.providableCertificateTypes
             }
-            guard case .offer(let types) = PeerCertificateBundle.availableCertificateTypes else {
-                return []
-            }
-            return types
+            // Without an authenticator the server can only present a raw public key.
+            return [.rawPublicKey]
         }
 
         /// The certificate types this server can verify from the client, negotiated via
@@ -193,11 +210,23 @@ extension ServerHandshakeStateMachine {
             epsks: [EPSK]?,
             epskSelectionCallback: externalPSKSelectionCallback?,
             useRawEPSKs: Bool,
-            clientAuthRequired: Bool,
+            clientAuthentication: ClientAuthenticationPolicy,
             supportedCipherSuites: [CipherSuite]?,
             asyncAuthenticator: AsyncAuthenticator?,
-            asyncVerifier: AsyncVerifier?
+            asyncVerifier: AsyncVerifier?,
+            fallbackAuthentication: AuthenticationMethod? = nil
         ) throws(TLSError) -> (authentication: AuthenticationMethod, verification: VerificationMethod)? {
+            var verification: VerificationMethod = .none
+            if clientAuthentication == .required {
+                if let validPeerPublicKeys, !validPeerPublicKeys.isEmpty {
+                    verification = .rawPublicKey(validPeerPublicKeys)
+                } else if let asyncVerifier {
+                    verification = .certificateCallbacks(asyncVerifier)
+                }
+                // Having nothing to verify with is resolved below, once the authentication
+                // method is known: whether it is an error depends on that method.
+            }
+
             let authentication: AuthenticationMethod
             if let signingKey {
                 authentication = .rawPublicKeyAuth(PrivateKey.init(signingKey))
@@ -239,21 +268,21 @@ extension ServerHandshakeStateMachine {
                 }
             } else if let asyncAuthenticator {
                 authentication = .certificateAuthCallbacks(asyncAuthenticator)
+            } else if let fallbackAuthentication, case .none = verification {
+                // Only applies when nothing else is configured and there is nothing to
+                // verify, so it cannot mask a failure found above.
+                authentication = fallbackAuthentication
             } else {
                 authentication = .noAuthAvailable
             }
 
-            let verification: VerificationMethod
-            if !clientAuthRequired {
-                verification = .none
-            } else if let validPeerPublicKeys, !validPeerPublicKeys.isEmpty {
-                verification = .rawPublicKey(validPeerPublicKeys)
-            } else if let asyncVerifier {
-                verification = .certificateCallbacks(asyncVerifier)
-            } else {
+            if clientAuthentication == .required, case .none = verification {
                 // Never silently downgrade a server that was asked to require client auth.
-                logger.error("CONFIGURATION: clientAuthRequired set with no way to verify the client")
-                return nil
+                guard !authentication.exchangesCertificates else {
+                    logger.error("CONFIGURATION: client authentication required with no way to verify the client")
+                    return nil
+                }
+                logger.info("CONFIGURATION: client authentication required but the configured authentication method already authenticates the client; ignoring")
             }
 
             return (authentication, verification)
@@ -290,10 +319,11 @@ extension ServerHandshakeStateMachine {
             epsks: [EPSK]? = nil,
             epskSelectionCallback: externalPSKSelectionCallback? = nil,
             useRawEPSKs: Bool = false,
-            clientAuthRequired: Bool = false,
+            clientAuthentication: ClientAuthenticationPolicy = .disabled,
             enableEarlyData: Bool = false,
             asyncAuthenticator: AsyncAuthenticator? = nil,
-            asyncVerifier: AsyncVerifier? = nil
+            asyncVerifier: AsyncVerifier? = nil,
+            fallbackAuthentication: AuthenticationMethod? = nil
         ) {
             self.serverName = serverName
             self.quicTransportParameters = quicTransportParameters
@@ -318,10 +348,11 @@ extension ServerHandshakeStateMachine {
                     epsks: epsks,
                     epskSelectionCallback: epskSelectionCallback,
                     useRawEPSKs: useRawEPSKs,
-                    clientAuthRequired: clientAuthRequired,
+                    clientAuthentication: clientAuthentication,
                     supportedCipherSuites: supportedCipherSuites,
                     asyncAuthenticator: asyncAuthenticator,
-                    asyncVerifier: asyncVerifier
+                    asyncVerifier: asyncVerifier,
+                    fallbackAuthentication: fallbackAuthentication
                 ) else {
                     self.authenticationMethod = .noAuthAvailable
                     self.verificationMethod = .none

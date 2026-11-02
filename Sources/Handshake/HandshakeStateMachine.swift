@@ -324,6 +324,20 @@ struct HandshakeStateMachine {
                     case .complete:
                         continue
                     }
+                case .awaitingClientCertificate:
+                    switch try self.handleAsyncClientCertificateResult() {
+                    case .waitingForMoreData:
+                        return nil
+                    case .complete(let partialResult):
+                        return partialResult
+                    }
+                case .awaitingClientSignature:
+                    switch try self.handleAsyncClientSignatureResult() {
+                    case .waitingForMoreData:
+                        return nil
+                    case .complete(let partialResult):
+                        return partialResult
+                    }
                 case .serverCertificateVerify:
                     switch try self.handleReadServerFinished(incomingBytes: &incomingBytes) {
                     case .waitingForMoreData:
@@ -366,6 +380,10 @@ struct HandshakeStateMachine {
         case .serverCertificate(let certificate):
             return certificate.serverQUICTransportParameters
         case .awaitingVerification(let waiting):
+            return waiting.serverQUICTransportParameters
+        case .awaitingClientCertificate(let waiting):
+            return waiting.serverQUICTransportParameters
+        case .awaitingClientSignature(let waiting):
             return waiting.serverQUICTransportParameters
         case .serverCertificateVerify(let certificateVerify):
             return certificateVerify.serverQUICTransportParameters
@@ -417,6 +435,10 @@ struct HandshakeStateMachine {
             return certificate.serverALPN
         case .awaitingVerification(let waiting):
             return waiting.serverALPN
+        case .awaitingClientCertificate(let waiting):
+            return waiting.serverALPN
+        case .awaitingClientSignature(let waiting):
+            return waiting.serverALPN
         case .serverCertificateVerify(let certificateVerify):
             return certificateVerify.serverALPN
         case .readyForData(let ready):
@@ -462,6 +484,10 @@ struct HandshakeStateMachine {
             return serverCertificate.negotiatedCipherSuite.rawValue
         case .awaitingVerification(let waiting):
             return waiting.negotiatedCipherSuite.rawValue
+        case .awaitingClientCertificate(let waiting):
+            return waiting.negotiatedCipherSuite.rawValue
+        case .awaitingClientSignature(let waiting):
+            return waiting.negotiatedCipherSuite.rawValue
         case .serverCertificateVerify(let certificateVerify):
             return certificateVerify.negotiatedCipherSuite.rawValue
         case .readyForData(let ready):
@@ -482,7 +508,8 @@ struct HandshakeStateMachine {
             return serverHello.epskNegotiated
         case .serverEncryptedExtensions(let ee):
             return ee.epskNegotiated
-        case .serverCertificateRequest, .serverCertificate, .serverCertificateVerify, .awaitingVerification:
+        case .serverCertificateRequest, .serverCertificate, .serverCertificateVerify, .awaitingVerification,
+             .awaitingClientCertificate, .awaitingClientSignature:
             return false // can never be in this state if epsk negotiated
         case .readyForData(let ready):
             return ready.epskNegotiated
@@ -507,6 +534,10 @@ struct HandshakeStateMachine {
         case .serverCertificate(let certificate):
             return certificate.epskNegotiationAttempted
         case .awaitingVerification(let waiting):
+            return waiting.epskNegotiationAttempted
+        case .awaitingClientCertificate(let waiting):
+            return waiting.epskNegotiationAttempted
+        case .awaitingClientSignature(let waiting):
             return waiting.epskNegotiationAttempted
         case .serverCertificateVerify(let certificateVerify):
             return certificateVerify.epskNegotiationAttempted
@@ -535,6 +566,10 @@ struct HandshakeStateMachine {
             return serverCertificate.negotiatedGroup.metadataDescription
         case .awaitingVerification(let waiting):
             return waiting.negotiatedGroup.metadataDescription
+        case .awaitingClientCertificate(let waiting):
+            return waiting.negotiatedGroup.metadataDescription
+        case .awaitingClientSignature(let waiting):
+            return waiting.negotiatedGroup.metadataDescription
         case .serverCertificateVerify(let certificateVerify):
             return certificateVerify.negotiatedGroup.metadataDescription
         case .readyForData(let ready):
@@ -558,6 +593,10 @@ struct HandshakeStateMachine {
             return serverCertificate.earlyDataAccepted
         case .awaitingVerification(let waiting):
             return waiting.earlyDataAccepted
+        case .awaitingClientCertificate(let waiting):
+            return waiting.earlyDataAccepted
+        case .awaitingClientSignature(let waiting):
+            return waiting.earlyDataAccepted
         case .serverCertificateVerify(let certificateVerify):
             return certificateVerify.earlyDataAccepted
         case .readyForData(let ready):
@@ -570,7 +609,7 @@ struct HandshakeStateMachine {
         switch self.state {
         case .idle, .clientHello, .serverHello, .serverEncryptedExtensions, .serverCertificateRequest, .serverCertificate, .serverCertificateVerify, .readyForData:
             return false
-        case .awaitingVerification:
+        case .awaitingVerification, .awaitingClientCertificate, .awaitingClientSignature:
             return true
         }
     }
@@ -774,8 +813,99 @@ extension HandshakeStateMachine {
         }
         logger.info("client got server finished")
 
-        let result = try self.state.receivedServerFinished(serverFinished: serverFinished, serverFinishedBytes: message.messageBytes, serializer: &self.serializer)
+        guard let result = try self.state.receivedServerFinished(
+            serverFinished: serverFinished,
+            serverFinishedBytes: message.messageBytes,
+            serializer: &self.serializer,
+            deliverResultCallback: self.deliverResultCallback
+        ) else {
+            // Parked awaiting a client authentication callback.
+            return .waitingForMoreData
+        }
         return .complete(result)
+    }
+
+    private mutating func handleAsyncClientCertificateResult() throws(TLSError) -> ProcessStep<PartialHandshakeResult> {
+        guard case .awaitingClientCertificate(let state) = self.state else {
+            logger.error("invalid state for handleAsyncClientCertificateResult")
+            throw TLSError.handshakeError
+        }
+
+        guard let pending = self.pendingAsyncResult else {
+            logger.debug("client handshake continued without setting pending async result")
+            return .waitingForMoreData
+        }
+        self.pendingAsyncResult = nil
+        guard case .certificate(let certificateResult) = pending.asyncResult else {
+            throw TLSError.internalError(reason: "Unexpected async result type in awaitingClientCertificate")
+        }
+
+        logger.info("client got async client certificate result")
+
+        let certificateList: [CertificateMessage.CertificateEntry]
+        switch certificateResult {
+        case .available(let list):
+            certificateList = try HandshakeState.clientCertificateEntries(
+                from: list,
+                negotiatedType: state.originalState.sessionData.clientCertificateType
+            )
+        case .unavailable(let reason):
+            logger.info("authenticator has no suitable client certificate: '\(reason)', sending empty certificate message")
+            certificateList = []
+        case .waiting:
+            preconditionFailure("pending result should not be .waiting")
+        }
+
+        guard let result = try self.state.continueAfterClientCertificate(
+            from: state.originalState,
+            certificateList: certificateList,
+            accumulated: ByteBuffer(),
+            serializer: &self.serializer,
+            deliverResultCallback: self.deliverResultCallback
+        ) else {
+            // Parked again, this time awaiting the signature.
+            return .waitingForMoreData
+        }
+        return .complete(result)
+    }
+
+    private mutating func handleAsyncClientSignatureResult() throws(TLSError) -> ProcessStep<PartialHandshakeResult> {
+        guard case .awaitingClientSignature(let state) = self.state else {
+            logger.error("invalid state for handleAsyncClientSignatureResult")
+            throw TLSError.handshakeError
+        }
+
+        guard let pending = self.pendingAsyncResult else {
+            logger.debug("client handshake continued without setting pending async result")
+            return .waitingForMoreData
+        }
+        self.pendingAsyncResult = nil
+        guard case .signature(let signatureResult) = pending.asyncResult else {
+            throw TLSError.internalError(reason: "Unexpected async result type in awaitingClientSignature")
+        }
+
+        logger.info("client got async client signature result")
+
+        switch signatureResult {
+        case .available(let signature, let signatureAlgorithm):
+            guard state.signatureInfo.peerOffer.signatureAlgorithms.contains(signatureAlgorithm) else {
+                logger.error("callback selected signature algorithm not offered by peer")
+                throw TLSError.handshakeFailure
+            }
+            let result = try self.state.continueAfterClientSignature(
+                from: state.originalState,
+                signature: signature,
+                algorithm: SignatureScheme(rawValue: signatureAlgorithm),
+                accumulated: state.accumulated,
+                serializer: &self.serializer
+            )
+            return .complete(result)
+        case .unavailable(let reason):
+            logger.error("authenticator failed to provide signature: '\(reason)'")
+            throw TLSError.handshakeFailure
+        case .waiting:
+            preconditionFailure("pending result should not be .waiting")
+        }
     }
 
     private mutating func handleReadNewSessionTicket(incomingBytes: inout InputBuffer) throws(TLSError) -> ProcessStep<PartialHandshakeResult> {

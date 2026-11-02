@@ -72,6 +72,13 @@ extension InputBuffer {
                 throw TLSError.truncatedMessage
             }
 
+            // RFC 7250 section 3 declares these vectors as `certificate_types<1..2^8-1>`, so
+            // an empty list is out of range rather than a way to say "no preference". It is
+            // not equivalent to omitting the extension, which section 4.1 covers separately.
+            guard !result.isEmpty else {
+                throw TLSError.decodeError
+            }
+
             return .offer(result)
         default:
             throw TLSError.invalidMessageForExtension(messageType: messageType, extensionType: .serverCertificateType)
