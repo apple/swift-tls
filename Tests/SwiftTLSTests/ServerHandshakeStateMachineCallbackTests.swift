@@ -230,6 +230,41 @@ final class ServerCallbackFixtures: Sendable {
         return .valid
     }
 
+    // Authorizes the *client's* raw public key. Mirror of `verificationCallbackRawPublicKey`,
+    // which authorizes the server's.
+    @Sendable func verificationCallbackClientRawPublicKey(info: VerificationInfo) -> VerificationResult {
+        self.authenticationCallbackCalled.withLock { $0 = true }
+        guard info.signatureAlgorithm == SignatureScheme.ecdsa_secp256r1_sha256.rawValue else {
+            return .invalid(reason: "unsupported signature algorithm")
+        }
+        guard info.certificates.type == .rawPublicKey else {
+            return .invalid(reason: "unsupported certificate type")
+        }
+        guard info.certificates.entries.count == 1 else {
+            return .invalid(reason: "only expected one key")
+        }
+        guard let key: P256.Signing.PublicKey = try? P256.Signing.PublicKey(derRepresentation: info.certificates.entries[0]) else {
+            return .invalid(reason: "failed to load key")
+        }
+        guard let signature = try? P256.Signing.ECDSASignature(derRepresentation: info.signature) else {
+            return .invalid(reason: "failed to load signature")
+        }
+        guard key.isValidSignature(signature, for: info.transcriptHash) else {
+            return .invalid(reason: "invalid signature")
+        }
+        guard key.rawRepresentation == self.clientAuthKey.publicKey.rawRepresentation else {
+            return .invalid(reason: "not authorized")
+        }
+        return .valid
+    }
+
+    // Rejects a well-formed client certificate, to exercise the server failing the handshake
+    // on a verdict of `.invalid` rather than continuing with an unauthenticated peer.
+    @Sendable func verificationCallbackRejectClient(info: VerificationInfo) -> VerificationResult {
+        self.authenticationCallbackCalled.withLock { $0 = true }
+        return .invalid(reason: "client not authorized")
+    }
+
     @Sendable func verificationCallbackCertificate(info: VerificationInfo) -> VerificationResult {
         self.authenticationCallbackCalled.withLock { $0 = true }
         guard info.certificates.type == .x509 else {
@@ -284,7 +319,7 @@ class ServerHandshakeStateMachineCallbackTests: XCTestCase {
             .Configuration(
                 quicTransportParameters: ByteBuffer("some opaque bytes"),
                 alpn: ["proto A", "proto B"],
-                asyncAuthenticator: AsyncAuthenticator(supportedCertificateTypes: [.rawPublicKey, .x509], getCertificateChain: self.fixtures.provideUnavailable(certInfo:), signTranscriptHash: self.fixtures.signRawPublicKey(_:))
+                asyncAuthenticator: AsyncAuthenticator(providableCertificateTypes: [.rawPublicKey, .x509], getCertificateChain: self.fixtures.provideUnavailable(certInfo:), signTranscriptHash: self.fixtures.signRawPublicKey(_:))
             )
     }
 
@@ -294,7 +329,7 @@ class ServerHandshakeStateMachineCallbackTests: XCTestCase {
             .Configuration(
                 quicTransportParameters: ByteBuffer("some opaque bytes"),
                 alpn: ["proto A", "proto B"],
-                asyncAuthenticator: AsyncAuthenticator(supportedCertificateTypes: [.rawPublicKey, .x509], getCertificateChain: self.fixtures.provideUnavailableAsync(certInfo:), signTranscriptHash: self.fixtures.signRawPublicKey(_:))
+                asyncAuthenticator: AsyncAuthenticator(providableCertificateTypes: [.rawPublicKey, .x509], getCertificateChain: self.fixtures.provideUnavailableAsync(certInfo:), signTranscriptHash: self.fixtures.signRawPublicKey(_:))
             )
     }
 
@@ -304,7 +339,7 @@ class ServerHandshakeStateMachineCallbackTests: XCTestCase {
             .Configuration(
                 quicTransportParameters: ByteBuffer("some opaque bytes"),
                 alpn: ["proto A", "proto B"],
-                asyncAuthenticator: AsyncAuthenticator(supportedCertificateTypes: [.rawPublicKey], getCertificateChain: self.fixtures.provideRawPublicKey(certInfo:), signTranscriptHash: self.fixtures.signUnavailable(_:))
+                asyncAuthenticator: AsyncAuthenticator(providableCertificateTypes: [.rawPublicKey], getCertificateChain: self.fixtures.provideRawPublicKey(certInfo:), signTranscriptHash: self.fixtures.signUnavailable(_:))
             )
     }
 
@@ -314,7 +349,7 @@ class ServerHandshakeStateMachineCallbackTests: XCTestCase {
             .Configuration(
                 quicTransportParameters: ByteBuffer("some opaque bytes"),
                 alpn: ["proto A", "proto B"],
-                asyncAuthenticator: AsyncAuthenticator(supportedCertificateTypes: [.x509], getCertificateChain: self.fixtures.provideCertificateAsync(certInfo:), signTranscriptHash: self.fixtures.signUnavailableAsync(_:))
+                asyncAuthenticator: AsyncAuthenticator(providableCertificateTypes: [.x509], getCertificateChain: self.fixtures.provideCertificateAsync(certInfo:), signTranscriptHash: self.fixtures.signUnavailableAsync(_:))
             )
     }
 
@@ -323,7 +358,7 @@ class ServerHandshakeStateMachineCallbackTests: XCTestCase {
             .Configuration(
                 quicTransportParameters: ByteBuffer("some opaque bytes"),
                 alpn: ["proto A", "proto B"],
-                asyncAuthenticator: AsyncAuthenticator(supportedCertificateTypes: [.rawPublicKey], getCertificateChain: self.fixtures.provideRawPublicKey(certInfo:), signTranscriptHash: self.fixtures.signRawPublicKey(_:))
+                asyncAuthenticator: AsyncAuthenticator(providableCertificateTypes: [.rawPublicKey], getCertificateChain: self.fixtures.provideRawPublicKey(certInfo:), signTranscriptHash: self.fixtures.signRawPublicKey(_:))
             )
     }
 
@@ -332,7 +367,7 @@ class ServerHandshakeStateMachineCallbackTests: XCTestCase {
             .Configuration(
                 quicTransportParameters: ByteBuffer("some opaque bytes"),
                 alpn: ["proto A", "proto B"],
-                asyncAuthenticator: AsyncAuthenticator(supportedCertificateTypes: [.x509], getCertificateChain: self.fixtures.provideCertificate(certInfo:), signTranscriptHash: self.fixtures.signCertificate(_:))
+                asyncAuthenticator: AsyncAuthenticator(providableCertificateTypes: [.x509], getCertificateChain: self.fixtures.provideCertificate(certInfo:), signTranscriptHash: self.fixtures.signCertificate(_:))
             )
     }
 
@@ -341,7 +376,7 @@ class ServerHandshakeStateMachineCallbackTests: XCTestCase {
             .Configuration(
                 quicTransportParameters: ByteBuffer("some opaque bytes"),
                 alpn: ["proto A", "proto B"],
-                asyncAuthenticator: AsyncAuthenticator(supportedCertificateTypes: [.x509], getCertificateChain: self.fixtures.provideCertificateAsync(certInfo:), signTranscriptHash: self.fixtures.signCertificateAsync(_:))
+                asyncAuthenticator: AsyncAuthenticator(providableCertificateTypes: [.x509], getCertificateChain: self.fixtures.provideCertificateAsync(certInfo:), signTranscriptHash: self.fixtures.signCertificateAsync(_:))
             )
     }
 
@@ -350,7 +385,7 @@ class ServerHandshakeStateMachineCallbackTests: XCTestCase {
             .Configuration(
                 quicTransportParameters: ByteBuffer("some opaque bytes"),
                 alpn: ["proto A", "proto B"],
-                asyncAuthenticator: AsyncAuthenticator(supportedCertificateTypes: [.x509], getCertificateChain: self.fixtures.provideCertificate(certInfo:), signTranscriptHash: self.fixtures.signCertificateWithWrongSignatureAlgorithm(_:))
+                asyncAuthenticator: AsyncAuthenticator(providableCertificateTypes: [.x509], getCertificateChain: self.fixtures.provideCertificate(certInfo:), signTranscriptHash: self.fixtures.signCertificateWithWrongSignatureAlgorithm(_:))
             )
     }
 
@@ -359,7 +394,7 @@ class ServerHandshakeStateMachineCallbackTests: XCTestCase {
             .Configuration(
                 quicTransportParameters: ByteBuffer("some opaque bytes"),
                 alpn: ["proto A", "proto B"],
-                asyncAuthenticator: AsyncAuthenticator(supportedCertificateTypes: [.x509], getCertificateChain: self.fixtures.provideCertificateAsync(certInfo:), signTranscriptHash: self.fixtures.signCertificateWithWrongSignatureAlgorithmAsync(_:))
+                asyncAuthenticator: AsyncAuthenticator(providableCertificateTypes: [.x509], getCertificateChain: self.fixtures.provideCertificateAsync(certInfo:), signTranscriptHash: self.fixtures.signCertificateWithWrongSignatureAlgorithmAsync(_:))
             )
     }
 
@@ -377,7 +412,7 @@ class ServerHandshakeStateMachineCallbackTests: XCTestCase {
             .Configuration(
                 quicTransportParameters: ByteBuffer("some opaque bytes"),
                 alpn: ["proto A", "proto B"],
-                asyncAuthenticator: AsyncAuthenticator(supportedCertificateTypes: [.x509, .rawPublicKey], getCertificateChain: self.fixtures.provideBothAvailable(certInfo:), signTranscriptHash: self.fixtures.signBothAvailable(_:))
+                asyncAuthenticator: AsyncAuthenticator(providableCertificateTypes: [.x509, .rawPublicKey], getCertificateChain: self.fixtures.provideBothAvailable(certInfo:), signTranscriptHash: self.fixtures.signBothAvailable(_:))
             )
     }
 
@@ -387,8 +422,8 @@ class ServerHandshakeStateMachineCallbackTests: XCTestCase {
                 quicTransportParameters: ByteBuffer("some opaque bytes"),
                 alpn: ["proto A", "proto B"],
                 validPeerPublicKeys: [self.fixtures.clientAuthKey.publicKey],
-                clientAuthRequired: true,
-                asyncAuthenticator: AsyncAuthenticator(supportedCertificateTypes: [.rawPublicKey], getCertificateChain: self.fixtures.provideRawPublicKey(certInfo:), signTranscriptHash: self.fixtures.signRawPublicKey(_:))
+                clientAuthentication: .required,
+                asyncAuthenticator: AsyncAuthenticator(providableCertificateTypes: [.rawPublicKey], getCertificateChain: self.fixtures.provideRawPublicKey(certInfo:), signTranscriptHash: self.fixtures.signRawPublicKey(_:))
             )
     }
 
@@ -397,8 +432,21 @@ class ServerHandshakeStateMachineCallbackTests: XCTestCase {
             .Configuration(
                 quicTransportParameters: ByteBuffer("some opaque bytes"),
                 alpn: ["proto A", "proto B"],
-                clientAuthRequired: true,
-                asyncAuthenticator: AsyncAuthenticator(supportedCertificateTypes: [.x509], getCertificateChain: self.fixtures.provideCertificate(certInfo:), signTranscriptHash: self.fixtures.signCertificate(_:)),
+                clientAuthentication: .required,
+                asyncAuthenticator: AsyncAuthenticator(providableCertificateTypes: [.x509], getCertificateChain: self.fixtures.provideCertificate(certInfo:), signTranscriptHash: self.fixtures.signCertificate(_:)),
+            )
+    }
+
+    // Fully delegated server: callbacks for its own identity (job A) and callbacks for
+    // verifying the client (job B).
+    var serverConfigCallbacksRequiresRPKClientAuthViaCallbacks: ServerHandshakeStateMachine.Configuration {
+        ServerHandshakeStateMachine
+            .Configuration(
+                quicTransportParameters: ByteBuffer("some opaque bytes"),
+                alpn: ["proto A", "proto B"],
+                clientAuthentication: .required,
+                asyncAuthenticator: AsyncAuthenticator(providableCertificateTypes: [.rawPublicKey], getCertificateChain: self.fixtures.provideRawPublicKey(certInfo:), signTranscriptHash: self.fixtures.signRawPublicKey(_:)),
+                asyncVerifier: AsyncVerifier(verifiableCertificateTypes: [.rawPublicKey], verificationCallback: self.fixtures.verificationCallbackClientRawPublicKey(info:))
             )
     }
 
@@ -410,7 +458,7 @@ class ServerHandshakeStateMachineCallbackTests: XCTestCase {
             quicTransportParameters: ByteBuffer("some opaque bytes"),
             alpn: ["proto A"],
             fixedKeyExchangeGroup: NamedGroup.secp384.rawValue,
-            asyncVerifier: AsyncVerifier(availableCertificateTypes: [.rawPublicKey], verificationCallback: self.fixtures.verificationCallbackRawPublicKey(info:))
+            asyncVerifier: AsyncVerifier(verifiableCertificateTypes: [.rawPublicKey], verificationCallback: self.fixtures.verificationCallbackRawPublicKey(info:))
         )
     }
 
@@ -421,7 +469,7 @@ class ServerHandshakeStateMachineCallbackTests: XCTestCase {
             alpn: ["proto A"],
             fixedKeyExchangeGroup: NamedGroup.secp384.rawValue,
             signingKey: .p256(self.fixtures.clientAuthKey),
-            asyncVerifier: AsyncVerifier(availableCertificateTypes: [.rawPublicKey], verificationCallback: self.fixtures.verificationCallbackRawPublicKey(info:))
+            asyncVerifier: AsyncVerifier(verifiableCertificateTypes: [.rawPublicKey], verificationCallback: self.fixtures.verificationCallbackRawPublicKey(info:))
         )
     }
 
@@ -431,7 +479,100 @@ class ServerHandshakeStateMachineCallbackTests: XCTestCase {
             quicTransportParameters: ByteBuffer("some opaque bytes"),
             alpn: ["proto A"],
             fixedKeyExchangeGroup: NamedGroup.secp384.rawValue,
-            asyncVerifier: AsyncVerifier(availableCertificateTypes: [.x509], verificationCallback: self.fixtures.verificationCallbackCertificate(info:))
+            asyncVerifier: AsyncVerifier(verifiableCertificateTypes: [.x509], verificationCallback: self.fixtures.verificationCallbackCertificate(info:))
+        )
+    }
+
+    // Fully delegated client: callbacks for verifying the server (job B) and callbacks for
+    // presenting its own x509 certificate (job A).
+    var clientConfigCertificateWithCertificateClientAuth: HandshakeStateMachine.Configuration {
+        HandshakeStateMachine.Configuration(
+            serverName: "test.example.com",
+            quicTransportParameters: ByteBuffer("some opaque bytes"),
+            alpn: ["proto A"],
+            fixedKeyExchangeGroup: NamedGroup.secp384.rawValue,
+            asyncVerifier: AsyncVerifier(verifiableCertificateTypes: [.x509], verificationCallback: self.fixtures.verificationCallbackCertificate(info:)),
+            asyncAuthenticator: AsyncAuthenticator(providableCertificateTypes: [.x509], getCertificateChain: self.fixtures.provideCertificate(certInfo:), signTranscriptHash: self.fixtures.signCertificate(_:))
+        )
+    }
+
+    // Server presenting x509 and verifying the client's x509, both through callbacks.
+    var serverConfigCertificateRequiresCertificateClientAuth: ServerHandshakeStateMachine.Configuration {
+        ServerHandshakeStateMachine
+            .Configuration(
+                quicTransportParameters: ByteBuffer("some opaque bytes"),
+                alpn: ["proto A", "proto B"],
+                clientAuthentication: .required,
+                asyncAuthenticator: AsyncAuthenticator(providableCertificateTypes: [.x509], getCertificateChain: self.fixtures.provideCertificate(certInfo:), signTranscriptHash: self.fixtures.signCertificate(_:)),
+                asyncVerifier: AsyncVerifier(verifiableCertificateTypes: [.x509], verificationCallback: self.fixtures.verificationCallbackCertificate(info:))
+            )
+    }
+
+    // Client whose certificate and signature callbacks both defer their results.
+    var clientConfigCertificateWithAsyncCertificateClientAuth: HandshakeStateMachine.Configuration {
+        HandshakeStateMachine.Configuration(
+            serverName: "test.example.com",
+            quicTransportParameters: ByteBuffer("some opaque bytes"),
+            alpn: ["proto A"],
+            fixedKeyExchangeGroup: NamedGroup.secp384.rawValue,
+            asyncVerifier: AsyncVerifier(verifiableCertificateTypes: [.x509], verificationCallback: self.fixtures.verificationCallbackCertificate(info:)),
+            asyncAuthenticator: AsyncAuthenticator(providableCertificateTypes: [.x509], getCertificateChain: self.fixtures.provideCertificateAsync(certInfo:), signTranscriptHash: self.fixtures.signCertificateAsync(_:))
+        )
+    }
+
+    // Server presenting x509 but only able to verify a client raw public key, so the
+    // client_certificate_type negotiation has no overlap with an x509-only client.
+    //
+    // The verifiable types come from an explicit `AsyncVerifier` rather than
+    // `validPeerPublicKeys`, because the latter resolves through
+    // `PeerCertificateBundle.verificationCertificateTypes`, whose contents depend on the
+    // `SWIFTTLS_SUPPORT_UNVERIFIED_X509` compile flag.
+    var serverConfigCertificateRequiresRPKClientAuth: ServerHandshakeStateMachine.Configuration {
+        ServerHandshakeStateMachine
+            .Configuration(
+                quicTransportParameters: ByteBuffer("some opaque bytes"),
+                alpn: ["proto A", "proto B"],
+                clientAuthentication: .required,
+                asyncAuthenticator: AsyncAuthenticator(providableCertificateTypes: [.x509], getCertificateChain: self.fixtures.provideCertificate(certInfo:), signTranscriptHash: self.fixtures.signCertificate(_:)),
+                asyncVerifier: AsyncVerifier(verifiableCertificateTypes: [.rawPublicKey], verificationCallback: self.fixtures.verificationCallbackClientRawPublicKey(info:))
+            )
+    }
+
+    // As `serverConfigCertificateRequiresRPKClientAuth`, but the verifier rejects the client.
+    var serverConfigCertificateRejectsRPKClientAuth: ServerHandshakeStateMachine.Configuration {
+        ServerHandshakeStateMachine
+            .Configuration(
+                quicTransportParameters: ByteBuffer("some opaque bytes"),
+                alpn: ["proto A", "proto B"],
+                clientAuthentication: .required,
+                asyncAuthenticator: AsyncAuthenticator(providableCertificateTypes: [.x509], getCertificateChain: self.fixtures.provideCertificate(certInfo:), signTranscriptHash: self.fixtures.signCertificate(_:)),
+                asyncVerifier: AsyncVerifier(verifiableCertificateTypes: [.rawPublicKey], verificationCallback: self.fixtures.verificationCallbackRejectClient(info:))
+            )
+    }
+
+    // Client that offers RPK client auth but whose certificate callback has nothing to give,
+    // so it sends an empty Certificate message.
+    var clientConfigRPKClientAuthNoCertificateAvailable: HandshakeStateMachine.Configuration {
+        HandshakeStateMachine.Configuration(
+            serverName: "test.example.com",
+            quicTransportParameters: ByteBuffer("some opaque bytes"),
+            alpn: ["proto A"],
+            fixedKeyExchangeGroup: NamedGroup.secp384.rawValue,
+            asyncVerifier: AsyncVerifier(verifiableCertificateTypes: [.rawPublicKey], verificationCallback: self.fixtures.verificationCallbackRawPublicKey(info:)),
+            asyncAuthenticator: AsyncAuthenticator(providableCertificateTypes: [.rawPublicKey], getCertificateChain: self.fixtures.provideUnavailable(certInfo:), signTranscriptHash: self.fixtures.signRawPublicKey(_:))
+        )
+    }
+
+    // Presents a raw public key while verifying the server's x509 chain: the shape of a
+    // device with a provisioned key talking to a service with a real certificate.
+    var clientConfigRawPublicKeyAuthWithCertificateVerification: HandshakeStateMachine.Configuration {
+        HandshakeStateMachine.Configuration(
+            serverName: "test.example.com",
+            quicTransportParameters: ByteBuffer("some opaque bytes"),
+            alpn: ["proto A"],
+            fixedKeyExchangeGroup: NamedGroup.secp384.rawValue,
+            signingKey: .p256(self.fixtures.clientAuthKey),
+            asyncVerifier: AsyncVerifier(verifiableCertificateTypes: [.x509], verificationCallback: self.fixtures.verificationCallbackCertificate(info:))
         )
     }
 
@@ -441,7 +582,7 @@ class ServerHandshakeStateMachineCallbackTests: XCTestCase {
             quicTransportParameters: ByteBuffer("some opaque bytes"),
             alpn: ["proto A"],
             fixedKeyExchangeGroup: NamedGroup.secp384.rawValue,
-            asyncVerifier: AsyncVerifier(availableCertificateTypes: [], verificationCallback: self.fixtures.verificationCallbackCertificate(info:))
+            asyncVerifier: AsyncVerifier(verifiableCertificateTypes: [], verificationCallback: self.fixtures.verificationCallbackCertificate(info:))
         )
     }
 
@@ -451,7 +592,7 @@ class ServerHandshakeStateMachineCallbackTests: XCTestCase {
             quicTransportParameters: ByteBuffer("some opaque bytes"),
             alpn: ["proto A"],
             fixedKeyExchangeGroup: NamedGroup.secp384.rawValue,
-            asyncVerifier: AsyncVerifier(availableCertificateTypes: [.init(rawValue: 0xFF)], verificationCallback: self.fixtures.verificationCallbackCertificate(info:))
+            asyncVerifier: AsyncVerifier(verifiableCertificateTypes: [.init(rawValue: 0xFF)], verificationCallback: self.fixtures.verificationCallbackCertificate(info:))
         )
     }
 
@@ -461,7 +602,7 @@ class ServerHandshakeStateMachineCallbackTests: XCTestCase {
             quicTransportParameters: ByteBuffer("some opaque bytes"),
             alpn: ["proto A"],
             fixedKeyExchangeGroup: NamedGroup.secp384.rawValue,
-            asyncVerifier: AsyncVerifier(availableCertificateTypes: [.x509], verificationCallback: self.fixtures.verificationCallbackCertificate(info:))
+            asyncVerifier: AsyncVerifier(verifiableCertificateTypes: [.x509], verificationCallback: self.fixtures.verificationCallbackCertificate(info:))
         )
     }
 
@@ -481,7 +622,7 @@ class ServerHandshakeStateMachineCallbackTests: XCTestCase {
             quicTransportParameters: ByteBuffer("some opaque bytes"),
             alpn: ["proto A"],
             fixedKeyExchangeGroup: NamedGroup.secp384.rawValue,
-            asyncVerifier: AsyncVerifier(availableCertificateTypes: [.x509, .rawPublicKey], verificationCallback: self.fixtures.verificationCallbackBothAvailable(info:))
+            asyncVerifier: AsyncVerifier(verifiableCertificateTypes: [.x509, .rawPublicKey], verificationCallback: self.fixtures.verificationCallbackBothAvailable(info:))
         )
     }
 
@@ -503,6 +644,31 @@ class ServerHandshakeStateMachineCallbackTests: XCTestCase {
         }
         stateMachine.applyAsyncResult(pending)
         return try stateMachine.processHandshake()
+    }
+
+    // Drives the client through however many async callback stages it needs. The client's
+    // second flight can park twice: once for the certificate, once for the signature.
+    func processWithAsyncDelivery(_ stateMachine: inout HandshakeStateMachine) throws -> PartialHandshakeResult? {
+        let pendingResult = Mutex<PendingAsyncResult?>(nil)
+        stateMachine.deliverResultCallback = { result in
+            pendingResult.withLock { mtx in
+                mtx = result
+            }
+        }
+        if let result = try stateMachine.processHandshake() {
+            return result
+        }
+        while let pending = pendingResult.withLock({ (mtx) -> PendingAsyncResult? in
+            let value = mtx
+            mtx = nil
+            return value
+        }) {
+            stateMachine.applyAsyncResult(pending)
+            if let result = try stateMachine.processHandshake() {
+                return result
+            }
+        }
+        return nil
     }
 
     @discardableResult
@@ -530,6 +696,7 @@ class ServerHandshakeStateMachineCallbackTests: XCTestCase {
         serverStateMachine: inout ServerHandshakeStateMachine,
         expectCallbacksCalled: Bool = true,
         clientAuthRequired: Bool = false,
+        serverRejectsClientWith: TLSError? = nil,
     ) throws {
 
         // Reset callback flags
@@ -632,7 +799,11 @@ class ServerHandshakeStateMachineCallbackTests: XCTestCase {
 
         // Read ServerFinished and Send ClientFinished
         clientStateMachine.receivedNetworkData(&serverFinishedBytes)
-        result = try clientStateMachine.processHandshake()!
+        guard let secondFlightResult = try processWithAsyncDelivery(&clientStateMachine) else {
+            XCTFail("client did not produce its second flight")
+            return
+        }
+        result = secondFlightResult
 
         guard var clientSecondFlightBytes = result.handshakeBytesToSend else {
             XCTFail("failed to get Client second flight bytes")
@@ -654,6 +825,16 @@ class ServerHandshakeStateMachineCallbackTests: XCTestCase {
 
         // Read [Client Certificate, Certificate Verify] + ClientFinished
         serverStateMachine.receivedNetworkData(&clientSecondFlightBytes)
+
+        // When the server is expected to reject the client, the handshake ends here rather
+        // than reaching `readyForData`.
+        if let serverRejectsClientWith {
+            XCTAssertThrowsError(try serverStateMachine.processHandshake()) { error in
+                XCTAssertEqual(error as? TLSError, serverRejectsClientWith)
+            }
+            return
+        }
+
         result = try serverStateMachine.processHandshake()!
         result.assertNewEncryptionLevel(.application, .read)
         XCTAssertEqual(serverStateMachine.stateDescription, "readyForData")
@@ -873,7 +1054,7 @@ class ServerHandshakeStateMachineCallbackTests: XCTestCase {
             quicTransportParameters: ByteBuffer("some opaque bytes"),
             alpn: ["proto A", "proto B"],
             asyncAuthenticator: AsyncAuthenticator(
-                supportedCertificateTypes: [.x509],
+                providableCertificateTypes: [.x509],
                 getCertificateChain: { certInfo in
                     capturedCertClosure.withLock { $0 = certInfo.deliverResult }
                     return .waiting
@@ -935,7 +1116,7 @@ class ServerHandshakeStateMachineCallbackTests: XCTestCase {
             quicTransportParameters: ByteBuffer("some opaque bytes"),
             alpn: ["proto A", "proto B"],
             asyncAuthenticator: AsyncAuthenticator(
-                supportedCertificateTypes: [.x509],
+                providableCertificateTypes: [.x509],
                 getCertificateChain: { _ in .waiting },
                 signTranscriptHash: self.fixtures.signCertificate(_:)
             )
@@ -984,7 +1165,7 @@ class ServerHandshakeStateMachineCallbackTests: XCTestCase {
             quicTransportParameters: ByteBuffer("some opaque bytes"),
             alpn: ["proto A", "proto B"],
             asyncAuthenticator: AsyncAuthenticator(
-                supportedCertificateTypes: [.x509],
+                providableCertificateTypes: [.x509],
                 getCertificateChain: self.fixtures.provideCertificate(certInfo:),
                 signTranscriptHash: { _ in .waiting }
             )
@@ -1166,7 +1347,7 @@ class ServerHandshakeStateMachineCallbackTests: XCTestCase {
         try runFailedHandshake(
             clientStateMachine: &clientStateMachine,
             serverStateMachine: &serverStateMachine,
-            // TODO: This should probably fail in `validateAndDetermineCertificateType`?
+            // TODO: This should probably fail in `negotiateServerCertificateType`?
             //  But when the client sends an empty certificate list, the server does not
             //  compare types and this will be a failure in the callback that cannot
             //  provide suitable certificates.
@@ -1183,15 +1364,14 @@ class ServerHandshakeStateMachineCallbackTests: XCTestCase {
     func testClientIncludesEmptyServerCertificateTypesExtension() throws {
         var clientStateMachine = try HandshakeStateMachine(configuration: self.clientConfigCertificateEmptyCertificateTypes)
         var serverStateMachine = try ServerHandshakeStateMachine(configuration: self.serverConfigCertificate)
-        // This test manipulates the clientHello received by the server. Since they see different bytes,
-        // the handshake will eventually fail when verifying the transcript hashes. However, we pass the
-        // remaining parts, which shows that the server can handle a server_certificate_types extension
-        // with an empty list (treated as if it was absent).
+        // RFC 7250 section 3 declares `server_certificate_types<1..2^8-1>`, so a zero-length
+        // list is malformed rather than a way to express "no preference", and is not the same
+        // as omitting the extension. The server rejects it while reading the client hello.
         try runFailedHandshake(
             clientStateMachine: &clientStateMachine,
             serverStateMachine: &serverStateMachine,
-            expectedError: TLSError.negotiationFailed,
-            errorLocation: .readServerFinished,
+            expectedError: TLSError.decodeError,
+            errorLocation: .readClientHello,
             extraClientHelloExtensions: [.serverCertificateType(.offer([]))]
         )
     }
@@ -1232,7 +1412,7 @@ class ServerHandshakeStateMachineCallbackTests: XCTestCase {
             quicTransportParameters: ByteBuffer("some opaque bytes"),
             alpn: ["proto A", "proto B"],
             asyncAuthenticator: AsyncAuthenticator(
-                supportedCertificateTypes: [.x509],
+                providableCertificateTypes: [.x509],
                 getCertificateChain: { _ in .waiting },
                 signTranscriptHash: self.fixtures.signCertificate(_:)
             )
@@ -1254,41 +1434,294 @@ class ServerHandshakeStateMachineCallbackTests: XCTestCase {
         }
     }
 
-    // --  client auth negotiation failures --
+    // --  client auth negotiation --
 
-    // Configuring clientAuth support on a client with certificate callbacks produce an invalid configuration.
-    func testRequiredClientAuthProducesInvalidClientConfig() throws {
-        XCTAssertThrowsError(try HandshakeStateMachine(configuration: self.clientConfigRawPublicKeyRPKClientAuth))
+    // A client that authenticates with an RPK while verifying the server through
+    // certificate callbacks is a valid configuration: the two jobs are independent.
+    func testRPKClientAuthWithCertificateCallbacksProducesValidClientConfig() throws {
+        XCTAssertNoThrow(try HandshakeStateMachine(configuration: self.clientConfigRawPublicKeyRPKClientAuth))
     }
 
-    // Configuring clientAuth support on a server with certificate callbacks produce an invalid configuration.
+    // Requiring client auth with no way to verify the client is still an invalid configuration.
     func testRequiredClientAuthProducesInvalidServerConfig() throws {
         XCTAssertThrowsError(try ServerHandshakeStateMachine(configuration: self.serverConfigCertificateRequiresClientAuth))
     }
 
     // Positive test first. client: RPK auth, server RPK auth (clientAuthRequired). Callbacks for server auth, SwiftTLS client auth for client auth.
     func testRPKClientAuthWorks() throws {
-        throw XCTSkip("This currently produces invalid an configuration as client-auth is not supported.")
+        var clientStateMachine = try HandshakeStateMachine(configuration: self.clientConfigRawPublicKeyRPKClientAuth)
+        var serverStateMachine = try ServerHandshakeStateMachine(configuration: self.serverConfigRawPublicKeyRequiresRPKClientAuth)
+        try runSuccessfulHandshake(
+            clientStateMachine: &clientStateMachine,
+            serverStateMachine: &serverStateMachine,
+            clientAuthRequired: true
+        )
+    }
+
+    // The server verifies the client's raw public key through its `AsyncVerifier` rather than
+    // the built-in trusted key list.
+    func testClientAuthVerifiedThroughCallbacks() throws {
+        var clientStateMachine = try HandshakeStateMachine(configuration: self.clientConfigRawPublicKeyRPKClientAuth)
+        var serverStateMachine = try ServerHandshakeStateMachine(configuration: self.serverConfigCallbacksRequiresRPKClientAuthViaCallbacks)
+        try runSuccessfulHandshake(
+            clientStateMachine: &clientStateMachine,
+            serverStateMachine: &serverStateMachine,
+            clientAuthRequired: true
+        )
+        XCTAssertTrue(self.fixtures.authenticationCallbackCalled.withLock { $0 })
+    }
+
+    // Full x509 mTLS: both peers present an x509 certificate and verify the other's,
+    // entirely through callbacks.
+    func testCertificateClientAuthThroughCallbacks() throws {
+        var clientStateMachine = try HandshakeStateMachine(configuration: self.clientConfigCertificateWithCertificateClientAuth)
+        var serverStateMachine = try ServerHandshakeStateMachine(configuration: self.serverConfigCertificateRequiresCertificateClientAuth)
+        try runSuccessfulHandshake(
+            clientStateMachine: &clientStateMachine,
+            serverStateMachine: &serverStateMachine,
+            clientAuthRequired: true
+        )
+        XCTAssertTrue(self.fixtures.authenticationCallbackCalled.withLock { $0 })
+    }
+
+    // The same, but the client's certificate and signature callbacks both return `.waiting`,
+    // so the client parks twice inside its own second flight.
+    func testCertificateClientAuthThroughAsyncCallbacks() throws {
+        var clientStateMachine = try HandshakeStateMachine(configuration: self.clientConfigCertificateWithAsyncCertificateClientAuth)
+        var serverStateMachine = try ServerHandshakeStateMachine(configuration: self.serverConfigCertificateRequiresCertificateClientAuth)
+        try runSuccessfulHandshake(
+            clientStateMachine: &clientStateMachine,
+            serverStateMachine: &serverStateMachine,
+            clientAuthRequired: true
+        )
+        XCTAssertTrue(self.fixtures.authenticationCallbackCalled.withLock { $0 })
+    }
+
+    // Asymmetric mTLS end to end: the server presents x509 and verifies the client's raw
+    // public key; the client presents a raw public key and verifies the server's x509.
+    //
+    // The two directions are negotiated independently, so `server_certificate_type` is
+    // omitted (x509 is the RFC 7250 default) while `client_certificate_type` carries
+    // `[.rawPublicKey]`.
+    func testRawPublicKeyClientAuthAgainstCertificateServer() throws {
+        var clientStateMachine = try HandshakeStateMachine(configuration: self.clientConfigRawPublicKeyAuthWithCertificateVerification)
+        var serverStateMachine = try ServerHandshakeStateMachine(configuration: self.serverConfigCertificateRequiresRPKClientAuth)
+        try runSuccessfulHandshake(
+            clientStateMachine: &clientStateMachine,
+            serverStateMachine: &serverStateMachine,
+            clientAuthRequired: true
+        )
+        XCTAssertTrue(self.fixtures.authenticationCallbackCalled.withLock { $0 })
+    }
+
+    // A verdict of `.invalid` on a well-formed client certificate must fail the handshake.
+    // The server has already sent its Finished at this point, so continuing would mean
+    // talking to a peer it explicitly asked to authenticate and then refused.
+    func testClientAuthRejectedByVerifierFailsHandshake() throws {
+        var clientStateMachine = try HandshakeStateMachine(configuration: self.clientConfigRawPublicKeyAuthWithCertificateVerification)
+        var serverStateMachine = try ServerHandshakeStateMachine(configuration: self.serverConfigCertificateRejectsRPKClientAuth)
+        try runSuccessfulHandshake(
+            clientStateMachine: &clientStateMachine,
+            serverStateMachine: &serverStateMachine,
+            clientAuthRequired: true,
+            serverRejectsClientWith: .certificateError
+        )
+        XCTAssertTrue(self.fixtures.authenticationCallbackCalled.withLock { $0 })
+    }
+
+    // The client parks awaiting its certificate, and reports it is awaiting async work.
+    func testClientSecondFlightParksAwaitingCertificate() throws {
+        var clientStateMachine = try HandshakeStateMachine(configuration: self.clientConfigCertificateWithAsyncCertificateClientAuth)
+        var serverStateMachine = try ServerHandshakeStateMachine(configuration: self.serverConfigCertificateRequiresCertificateClientAuth)
+
+        // Drive both sides up to the point where the client has the server's Finished.
+        var clientHelloBytes = try clientStateMachine.startHandshake().handshakeBytesToSend!
+        serverStateMachine.receivedNetworkData(&clientHelloBytes)
+        var serverFlight = ByteBuffer()
+        while let result = try processWithAsyncDelivery(&serverStateMachine) {
+            if var bytes = result.handshakeBytesToSend {
+                serverFlight.writeBuffer(&bytes)
+            }
+            if serverStateMachine.stateDescription == "serverFinished" {
+                break
+            }
+        }
+        clientStateMachine.receivedNetworkData(&serverFlight)
+
+        // Without a deliverResultCallback the client cannot park, so install one that
+        // withholds the result.
+        clientStateMachine.deliverResultCallback = { _ in }
+
+        // `processHandshake()` returns once per reportable result and legitimately returns
+        // nil for messages that produce none, so drive on the state rather than the result.
+        for _ in 0..<12 {
+            if clientStateMachine.state.logDescription == "awaitingClientCertificate" {
+                break
+            }
+            _ = try clientStateMachine.processHandshake()
+        }
+
+        XCTAssertEqual(clientStateMachine.state.logDescription, "awaitingClientCertificate")
+        XCTAssertTrue(clientStateMachine.awaitingAsyncComputation)
+        XCTAssertFalse(clientStateMachine.handshakeComplete)
     }
 
     // Server requires client RPK auth, client doesn't send client_certificate_type
-    // The server has clientAuthRequired = true and serverSupportedClientCertificateTypes = [.rawPublicKey].
-    // negotiateClientCertificateType() returns nil (client didn't offer the extension).
-    // Server should throw TLSError.handshakeFailure (line 916-918).
+    // The server has clientAuthRequired = true and verifiableClientCertificateTypes = [.rawPublicKey].
+    // negotiateClientCertificateType() returns nil (client didn't offer the extension), which
+    // means x509 per RFC 7250, and the server cannot verify x509 client certificates.
     func testRPKClientAuthNegotiationFailure() throws {
-        throw XCTSkip("This currently produces invalid an configuration as client-auth is not supported.")
+        var clientStateMachine = try HandshakeStateMachine(configuration: self.clientConfigRawPublicKey)
+        var serverStateMachine = try ServerHandshakeStateMachine(configuration: self.serverConfigCallbacksRequiresRPKClientAuthViaCallbacks)
+        try runFailedHandshake(
+            clientStateMachine: &clientStateMachine,
+            serverStateMachine: &serverStateMachine,
+            expectedError: TLSError.handshakeFailure,
+            errorLocation: .readClientHello
+        )
     }
 
     // Server requires client RPK auth, client offers only X.509 in client_certificate_type
     // negotiateClientCertificateType() returns nil (no common type). Same failure.
     func testCertificateClientAuthNegotiationFailure() throws {
-        throw XCTSkip("This currently produces invalid an configuration as client-auth is not supported.")
+        var clientStateMachine = try HandshakeStateMachine(configuration: self.clientConfigCertificateWithCertificateClientAuth)
+        var serverStateMachine = try ServerHandshakeStateMachine(configuration: self.serverConfigCertificateRequiresRPKClientAuth)
+        try runFailedHandshake(
+            clientStateMachine: &clientStateMachine,
+            serverStateMachine: &serverStateMachine,
+            expectedError: TLSError.handshakeFailure,
+            errorLocation: .readClientHello
+        )
     }
 
     // Server requiring client auth with RPKs (clientAuthRequired = true) and
     // the client sends an empty certificate message and no certificate verify should fail.
     func testClientAuthNegotiationEmptyCertificateMessage() throws {
-        throw XCTSkip("This currently produces invalid an configuration as client-auth is not supported.")
+        var clientStateMachine = try HandshakeStateMachine(configuration: self.clientConfigRPKClientAuthNoCertificateAvailable)
+        var serverStateMachine = try ServerHandshakeStateMachine(configuration: self.serverConfigRawPublicKeyRequiresRPKClientAuth)
+
+        var clientHelloBytes = try clientStateMachine.startHandshake().handshakeBytesToSend!
+        serverStateMachine.receivedNetworkData(&clientHelloBytes)
+
+        // Drive the server through its whole first flight.
+        var serverFlight = ByteBuffer()
+        for _ in 0..<12 {
+            guard let result = try serverStateMachine.processHandshake() else { break }
+            if var bytes = result.handshakeBytesToSend {
+                serverFlight.writeBuffer(&bytes)
+            }
+            if serverStateMachine.stateDescription == "serverFinished" {
+                break
+            }
+        }
+        XCTAssertEqual(serverStateMachine.stateDescription, "serverFinished")
+
+        // The client's authenticator has nothing to provide, so it sends an empty Certificate
+        // message, skips CertificateVerify, and finishes.
+        clientStateMachine.receivedNetworkData(&serverFlight)
+        var clientSecondFlight = ByteBuffer()
+        for _ in 0..<12 {
+            if clientStateMachine.state.logDescription == "readyForData" {
+                break
+            }
+            guard let result = try clientStateMachine.processHandshake() else { continue }
+            if var bytes = result.handshakeBytesToSend {
+                clientSecondFlight.writeBuffer(&bytes)
+            }
+        }
+        XCTAssertEqual(clientStateMachine.state.logDescription, "readyForData")
+
+        // The server requires a certificate, so an empty certificate_list is fatal.
+        serverStateMachine.receivedNetworkData(&clientSecondFlight)
+        XCTAssertThrowsError(try serverStateMachine.processHandshake()) { error in
+            XCTAssertEqual(error as? TLSError, .certificateRequired)
+        }
+    }
+
+    // MARK: - requiring client authentication against each authentication method
+
+    // An EPSK authenticates both peers by itself and exchanges no certificates, so there is
+    // no `CertificateRequest` for the policy to apply to. Asking for client authentication
+    // alongside one is redundant rather than contradictory: it is logged and ignored, so
+    // that callers already passing both keep working.
+    func testEPSKServerIgnoresRequiredClientAuthentication() throws {
+        let epsk = try EPSK(
+            externalIdentity: ByteBuffer("test psk identity"),
+            epsk: SymmetricKey(size: .bits256),
+            context: nil
+        )
+        let configuration = ServerHandshakeStateMachine.Configuration(
+            epsks: [epsk],
+            clientAuthentication: .required
+        )
+        XCTAssertTrue(configuration.validConfiguration)
+        XCTAssertNotNil(configuration.epsks)
+        XCTAssertFalse(configuration.clientAuthRequired)
+    }
+
+    // An EPSK server sends no Certificate message, so it has no certificate type to offer
+    // and must not claim one. Claiming `[.rawPublicKey]` would let it reject a client over a
+    // `server_certificate_type` it was never going to use.
+    func testEPSKServerOffersNoServerCertificateTypes() throws {
+        let epsk = try EPSK(
+            externalIdentity: ByteBuffer("test psk identity"),
+            epsk: SymmetricKey(size: .bits256),
+            context: nil
+        )
+        let configuration = ServerHandshakeStateMachine.Configuration(epsks: [epsk])
+        XCTAssertTrue(configuration.validConfiguration)
+        XCTAssertEqual(configuration.providableServerCertificateTypes, [])
+    }
+
+    // A server that does present a certificate still offers its types.
+    func testCertificateServerOffersItsServerCertificateTypes() throws {
+        let configuration = ServerHandshakeStateMachine.Configuration(
+            signingKey: .p256(P256.Signing.PrivateKey())
+        )
+        XCTAssertTrue(configuration.validConfiguration)
+        XCTAssertEqual(configuration.providableServerCertificateTypes, [CertificateType.rawPublicKey])
+    }
+
+    // A server that authenticates with a certificate does exchange certificates, so
+    // requiring client authentication with nothing to verify against is a contradiction.
+    // Silently not requesting the certificate would be a downgrade, so this stays invalid.
+    func testRawPublicKeyServerRejectsRequiredClientAuthenticationWithNoVerifier() throws {
+        let configuration = ServerHandshakeStateMachine.Configuration(
+            signingKey: .p256(P256.Signing.PrivateKey()),
+            clientAuthentication: .required
+        )
+        XCTAssertFalse(configuration.validConfiguration)
+    }
+
+    func testCertificateServerRejectsRequiredClientAuthenticationWithNoVerifier() throws {
+        let configuration = ServerHandshakeStateMachine.Configuration(
+            clientAuthentication: .required,
+            asyncAuthenticator: AsyncAuthenticator(
+                providableCertificateTypes: [.x509],
+                getCertificateChain: { _ in .unavailable(reason: "unused") },
+                signTranscriptHash: { _ in .unavailable(reason: "unused") }
+            )
+        )
+        XCTAssertFalse(configuration.validConfiguration)
+    }
+
+    // The verifier is what makes requiring client authentication expressible, so the same
+    // server is valid once one is supplied.
+    func testCertificateServerAcceptsRequiredClientAuthenticationWithVerifier() throws {
+        let configuration = ServerHandshakeStateMachine.Configuration(
+            clientAuthentication: .required,
+            asyncAuthenticator: AsyncAuthenticator(
+                providableCertificateTypes: [.x509],
+                getCertificateChain: { _ in .unavailable(reason: "unused") },
+                signTranscriptHash: { _ in .unavailable(reason: "unused") }
+            ),
+            asyncVerifier: AsyncVerifier(
+                verifiableCertificateTypes: [.x509],
+                verificationCallback: { _ in .valid }
+            )
+        )
+        XCTAssertTrue(configuration.validConfiguration)
+        XCTAssertTrue(configuration.clientAuthRequired)
     }
 
 }
