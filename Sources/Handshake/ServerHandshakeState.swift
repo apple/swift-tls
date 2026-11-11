@@ -72,6 +72,9 @@ enum ServerHandshakeState {
     /// The `Certificate` message has been read from the client.
     case clientCertificate(ClientCertificateState)
 
+    /// The server is awaiting the result of verifying the client's certificate.
+    case awaitingClientVerification(AwaitingClientVerificationState)
+
     /// The `CertificateVerify` message has been read from the client.
     case clientCertificateVerify(ClientCertificateVerifyState)
 
@@ -163,6 +166,8 @@ enum ServerHandshakeState {
         switch self {
         case .serverEncryptedExtensions(let state):
             self = .awaitingCertificate(AwaitingCertificateState(originalState: state, asyncAuthenticator: asyncAuthenticator, certInfo: certInfo))
+        case .serverCertificateRequest(let state):
+            self = .awaitingCertificate(AwaitingCertificateState(originalState: state, asyncAuthenticator: asyncAuthenticator, certInfo: certInfo))
         default:
             preconditionFailure()
         }
@@ -171,6 +176,10 @@ enum ServerHandshakeState {
     mutating func sendingServerCertificate(withCertificates certificates: [Data], authDetails: AuthenticationDetails) throws(TLSError) -> PartialHandshakeResult {
         switch self {
         case .serverEncryptedExtensions(let state):
+            let (newState, serverCertificateBytes) = try ServerCertificateState.sendingServerCertificate(originalState: state, withCertificates: certificates, authDetails: authDetails)
+            self = .serverCertificate(newState)
+            return PartialHandshakeResult(handshakeBytesToSend: serverCertificateBytes)
+        case .serverCertificateRequest(let state):
             let (newState, serverCertificateBytes) = try ServerCertificateState.sendingServerCertificate(originalState: state, withCertificates: certificates, authDetails: authDetails)
             self = .serverCertificate(newState)
             return PartialHandshakeResult(handshakeBytesToSend: serverCertificateBytes)
@@ -254,13 +263,80 @@ enum ServerHandshakeState {
         }
     }
 
-    mutating func receivedClientCertificateVerify(_ clientCertificateVerify: CertificateVerify, bytes: ByteBuffer) throws(TLSError) {
-        switch self {
-        case .clientCertificate(let state):
-            let newState = try ClientCertificateVerifyState.init(originalState: state, clientCertificateVerify: clientCertificateVerify, clientCertificateVerifyBytes: bytes)
-            self = .clientCertificateVerify(newState)
-        default:
+    mutating func receivedClientCertificateVerify(
+        _ clientCertificateVerify: CertificateVerify,
+        bytes: ByteBuffer,
+        deliverResultCallback: (@Sendable (PendingAsyncResult) -> Void)?
+    ) throws(TLSError) -> AuthenticationResult {
+        guard case .clientCertificate(let state) = self else {
             preconditionFailure()
+        }
+
+        switch state.configuration.verificationMethod {
+        case .rawPublicKey(let validPublicKeys):
+            guard try state.clientCertificates.verifyClientCertificateVerifySignature(
+                message: clientCertificateVerify,
+                validKeys: validPublicKeys,
+                keyScheduler: state.keyScheduler)
+            else {
+                logger.error("certificate verification failed")
+                throw TLSError.certificateError
+            }
+            logger.info("client certificate trusted")
+            self = .clientCertificateVerify(
+                try ClientCertificateVerifyState.verifiedPeer(originalState: state, clientCertificateVerifyBytes: bytes)
+            )
+            return .finished
+
+        case .certificateCallbacks(let asyncVerifier):
+            guard let certificates = try? state.clientCertificates.exportList() else {
+                logger.error("exporting certificates failed")
+                throw TLSError.certificateError
+            }
+            // The signed content, not a bare hash. Must be read before the
+            // CertificateVerify message is added to the transcript.
+            let transcriptHash = try state.keyScheduler.dataToSignInClientCertificateVerify().readableBytesView
+            var verificationInfo = VerificationInfo(
+                certificates: certificates,
+                signatureAlgorithm: clientCertificateVerify.algorithm.rawValue,
+                signature: clientCertificateVerify.signature.readableBytesView,
+                transcriptHash: transcriptHash
+            )
+            if let deliverCallback = deliverResultCallback {
+                verificationInfo.deliverResult = { result in
+                    deliverCallback(.verification(result))
+                }
+            }
+
+            switch asyncVerifier.verifyHandshake(verificationInfo) {
+            case .valid:
+                logger.info("client certificate trusted")
+                self = .clientCertificateVerify(
+                    try ClientCertificateVerifyState.verifiedPeer(originalState: state, clientCertificateVerifyBytes: bytes)
+                )
+                return .finished
+            case .invalid(let reason):
+                logger.error("client certificate verification failed: \(reason)")
+                throw TLSError.certificateError
+            case .waiting:
+                guard verificationInfo.deliverResult != nil else {
+                    logger.error("verification callback returned .waiting but no deliverResultCallback is set")
+                    throw TLSError.handshakeError
+                }
+                self = .awaitingClientVerification(
+                    AwaitingClientVerificationState(
+                        originalState: state,
+                        asyncVerifier: asyncVerifier,
+                        verificationInfo: verificationInfo,
+                        clientCertificateVerifyBytes: bytes
+                    )
+                )
+                return .delayed
+            }
+
+        case .none:
+            logger.error("read a client certificate verify but the server is not configured to verify the client")
+            throw TLSError.internalError(reason: "client authentication is not configured")
         }
     }
 }
@@ -287,12 +363,6 @@ extension ServerHandshakeState {
 
     }
 
-    struct NegotiatedParams {
-        let negotiatedGroup: NamedGroup
-        let negotiatedSignatureAlgorithm: SignatureScheme
-        let negotiatedCertificateType: CertificateType
-    }
-
     struct ClientHelloVerifier {
         var observedExtensionTypes = Set<ExtensionType>()
         var clientKeyShares: [Extension.KeyShare.KeyShareEntry]? = nil
@@ -308,8 +378,8 @@ extension ServerHandshakeState {
         var clientIndicatedEarlyData: Bool = false
         let serverSupportedGroups: [NamedGroup]
         let serverSupportedSignatureAlgs: [SignatureScheme] /* must include at least one element */
-        let serverSupportedCertificateTypes: [CertificateType] /* must include at least one element */
-        let serverSupportedClientCertificateTypes: [CertificateType] /* must include at least one element */
+        let providableServerCertificateTypes: [CertificateType]
+        let verifiableClientCertificateTypes: [CertificateType]
         let serverSupportedPSKKexModes: [Extension.PreSharedKeyKexModes.Mode]
         let serverSupportedPSKs: [GeneralEPSK]
         let useRawEPSKs: Bool
@@ -494,36 +564,6 @@ extension ServerHandshakeState {
             }
         }
 
-        private func validateAndDetermineCertificateType() throws(TLSError) -> CertificateType {
-            // Process server_certificate_type extension
-            if let clientRequestedServerCertificateTypes, clientRequestedServerCertificateTypes.count > 0 {
-                var commonServerCertType: CertificateType? = nil
-                for certType in clientRequestedServerCertificateTypes {
-                    if serverSupportedCertificateTypes.contains(certType) {
-                        commonServerCertType = certType
-                        break
-                    }
-                }
-
-                // if server does not have any certificate type in common with the client,
-                // server terminates the session with a fatal alert of type "unsupported_certificate"
-                if commonServerCertType == nil {
-                    logger.error("client requested unsupported server certificate type")
-                    throw TLSError.unsupportedCertificate
-                }
-                return commonServerCertType!
-            }
-            return serverSupportedCertificateTypes[0]
-        }
-
-        private func validateSignatureAlgorithms(serverCertificateType: CertificateType) throws(TLSError) {
-            if clientOfferedGroups == nil && serverCertificateType == .x509 {
-                // if using certificate authentication signature_algorithms extension is required
-                logger.error("client hello missing required signature_algorithms extension")
-                throw TLSError.missingExtension
-            }
-        }
-
         private func validateKeyShares() throws(TLSError) {
             // key_shares extension required if using DHE or ECDHE key exchange
             guard let clientKeyShares else {
@@ -575,32 +615,63 @@ extension ServerHandshakeState {
             }
         }
 
-        func negotiateServerCertificateType() throws(TLSError) -> CertificateType? {
-            var commonServerCertType: CertificateType? = nil
-            // Process server_certificate_type extension
-            if let clientRequestedServerCertificateTypes {
-                for certType in clientRequestedServerCertificateTypes {
-                    if serverSupportedCertificateTypes.contains(certType) {
-                        commonServerCertType = certType
-                        break
-                    }
-                }
+        /// First type the client offered that this server also supports, or `nil` when the
+        /// client did not offer the extension or the two lists do not overlap.
+        ///
+        /// What no overlap means differs between the two extensions, so that is left to the
+        /// callers rather than decided here.
+        private func firstCommonCertificateType(
+            clientRequested: [CertificateType]?,
+            supported: [CertificateType]
+        ) -> CertificateType? {
+            guard let clientRequested else {
+                return nil
             }
-            return commonServerCertType
+            return clientRequested.first { supported.contains($0) }
         }
 
-        func negotiateClientCertificateType() throws(TLSError) -> CertificateType? {
-            var commonClientCertType: CertificateType? = nil
-            // Process client_certificate_type extension
-            if let clientRequestedClientCertificateTypes {
-                for certType in clientRequestedClientCertificateTypes {
-                    if serverSupportedClientCertificateTypes.contains(certType) {
-                        commonClientCertType = certType
-                        break
-                    }
-                }
+        func negotiateServerCertificateType() throws(TLSError) -> CertificateType? {
+            // Absent means the client offered no alternative to X.509: RFC 7250 section 4.1
+            // requires it to omit the extension when it has nothing to offer "other than the
+            // default X.509 type". The RFC does not spell out the server's side of that, but
+            // it is the only reading the client's obligation leaves open.
+            // An empty list cannot reach here: the parser rejects it as malformed.
+            guard let clientRequestedServerCertificateTypes else {
+                return nil
             }
-            return commonClientCertType
+
+            // This server sends no Certificate message at all — an EPSK — so there is no type
+            // to agree on and the extension is omitted from the server hello. Failing here
+            // would reject a client over a certificate never going to be sent.
+            guard !providableServerCertificateTypes.isEmpty else {
+                return nil
+            }
+
+            guard let commonType = firstCommonCertificateType(
+                clientRequested: clientRequestedServerCertificateTypes,
+                supported: providableServerCertificateTypes
+            ) else {
+                // RFC 7250 section 4.2: with no type in common the server cannot authenticate
+                // itself at all, so it "terminates the session with a fatal alert of type
+                // unsupported_certificate".
+                logger.error("client requested unsupported server certificate type")
+                throw TLSError.unsupportedCertificate
+            }
+            return commonType
+        }
+
+        /// Deliberately does not fail when there is no common type, unlike
+        /// `negotiateServerCertificateType()`.
+        ///
+        /// RFC 7250 section 4.2 has the server omit `client_certificate_type` from its hello
+        /// in that case rather than ending the session, because the handshake can still
+        /// proceed without client authentication. Whether the absence is fatal depends on
+        /// whether this server requires client authentication, which the caller checks.
+        func negotiateClientCertificateType() -> CertificateType? {
+            firstCommonCertificateType(
+                clientRequested: clientRequestedClientCertificateTypes,
+                supported: verifiableClientCertificateTypes
+            )
         }
 
         func negotiateGroup() throws(TLSError) -> NamedGroup? {
@@ -642,8 +713,6 @@ extension ServerHandshakeState {
         func validateExtensions() throws(TLSError) {
             try validateSupportedVersions()
             try validateSupportedGroups()
-            let serverCertificateType = try validateAndDetermineCertificateType()
-            try validateSignatureAlgorithms(serverCertificateType: serverCertificateType)
             try validateKeyShares()
             try validatePSKKexModes()
         }
@@ -791,24 +860,12 @@ extension ServerHandshakeState {
                 throw TLSError.handshakeInvalidMessage
             }
 
-            var serverSupportedCertificateTypes: [CertificateType] = []
-            if let authenticator = idleState.configuration.asyncAuthenticator {
-                serverSupportedCertificateTypes = authenticator.supportedCertificateTypes
-            } else if case .offer(let availableCertTypes) = PeerCertificateBundle.availableCertificateTypes {
-                serverSupportedCertificateTypes = availableCertTypes
-            }
-
-            var serverSupportedClientCertificateTypes: [CertificateType] = []
-            if case .offer(let verifyCertTypes) = PeerCertificateBundle.verificationCertificateTypes {
-                serverSupportedClientCertificateTypes = verifyCertTypes
-            }
-
             // TODO: add server config for signature algorithms, certificate types
             var clientHelloVerifier = ClientHelloVerifier(
                 serverSupportedGroups: [.x25519MLKEM768, .secp384, .x25519],
                 serverSupportedSignatureAlgs: [.ecdsa_secp256r1_sha256],
-                serverSupportedCertificateTypes: serverSupportedCertificateTypes,
-                serverSupportedClientCertificateTypes: serverSupportedClientCertificateTypes,
+                providableServerCertificateTypes: idleState.configuration.providableServerCertificateTypes,
+                verifiableClientCertificateTypes: idleState.configuration.verifiableClientCertificateTypes,
                 serverSupportedPSKKexModes: [.pskAndDHE],
                 serverSupportedPSKs: idleState.epsks ?? [],
                 useRawEPSKs: idleState.configuration.useRawEPSKs,
@@ -832,16 +889,17 @@ extension ServerHandshakeState {
             // Negotiate ciphersuite - this always happens
             let negotiatedCipherSuite = try negotiateCipherSuite(clientHello.cipherSuites, serverSupportedCipherSuites)
 
-            // Non-nil ONLY if the client sent a server certificate type extension and the server negotiated a common one
+            // Both are non-nil ONLY if the client sent the corresponding extension and this
+            // server has a type in common with it.
             let negotiatedServerCertificateType = try clientHelloVerifier.negotiateServerCertificateType()
-
-            // Non-nil ONLY if the client sent a client_certificate_type extension and the server negotiated a common one
-            let negotiatedClientCertificateType = try clientHelloVerifier.negotiateClientCertificateType()
-            // if the server requires client auth and needs a raw public key then it needs this to be negotiated to raw public key
-            if idleState.configuration.clientAuthRequired &&
-                clientHelloVerifier.serverSupportedClientCertificateTypes == [.rawPublicKey] {
-                guard let negotiatedClientCertificateType, negotiatedClientCertificateType == .rawPublicKey else {
-                    logger.error("server requires the client to authenticate with raw public keys, but client did not indicate support. Failing.")
+            let negotiatedClientCertificateType = clientHelloVerifier.negotiateClientCertificateType()
+            // When requiring client auth, the type the client will send must be one we can verify.
+            // A client that sent no extension has nothing to offer beyond the default X.509
+            // type, which RFC 7250 section 4.1 requires it to signal by omission.
+            if idleState.configuration.clientAuthRequired {
+                let expectedClientCertificateType = negotiatedClientCertificateType ?? .x509
+                guard clientHelloVerifier.verifiableClientCertificateTypes.contains(expectedClientCertificateType) else {
+                    logger.error("server cannot verify the negotiated client certificate type. Failing.")
                     throw TLSError.handshakeFailure
                 }
             }
@@ -1480,6 +1538,41 @@ extension ServerHandshakeState {
         }
     }
 
+    struct AwaitingClientVerificationState {
+        var configuration: ServerHandshakeStateMachine.Configuration
+        var keyScheduler: ServerSessionKeyManager<SHA384>
+        let clientQUICTransportParameters: ByteBuffer?
+        let selectedALPN: ApplicationLayerProtocol?
+        let negotiatedCiphersuite: CipherSuite
+        let earlyDataPermitted: Bool
+        let negotiatedGroup: NamedGroup?
+        let epskNegotiated: Bool
+        let pskNegotiationAttempted: Bool
+        let asyncVerifier: AsyncVerifier
+        var verificationInfo: VerificationInfo
+        var clientCertificateVerifyBytes: ByteBuffer
+
+        init(
+            originalState clientCertificateState: ClientCertificateState,
+            asyncVerifier: AsyncVerifier,
+            verificationInfo: VerificationInfo,
+            clientCertificateVerifyBytes: ByteBuffer
+        ) {
+            self.configuration = clientCertificateState.configuration
+            self.keyScheduler = clientCertificateState.keyScheduler
+            self.clientQUICTransportParameters = clientCertificateState.clientQUICTransportParameters
+            self.selectedALPN = clientCertificateState.selectedALPN
+            self.negotiatedCiphersuite = clientCertificateState.negotiatedCiphersuite
+            self.earlyDataPermitted = clientCertificateState.earlyDataPermitted
+            self.negotiatedGroup = clientCertificateState.negotiatedGroup
+            self.epskNegotiated = clientCertificateState.epskNegotiated
+            self.pskNegotiationAttempted = clientCertificateState.pskNegotiationAttempted
+            self.asyncVerifier = asyncVerifier
+            self.verificationInfo = verificationInfo
+            self.clientCertificateVerifyBytes = clientCertificateVerifyBytes
+        }
+    }
+
     struct ClientCertificateVerifyState {
         var configuration: ServerHandshakeStateMachine.Configuration
         var keyScheduler: ServerSessionKeyManager<SHA384>
@@ -1491,16 +1584,7 @@ extension ServerHandshakeState {
         let epskNegotiated: Bool
         let pskNegotiationAttempted: Bool
 
-        init(originalState clientCertificateState: ClientCertificateState, clientCertificateVerify: CertificateVerify, clientCertificateVerifyBytes: ByteBuffer) throws(TLSError) {
-            guard try clientCertificateState.clientCertificates.verifyClientCertificateVerifySignature(
-                message: clientCertificateVerify,
-                validKeys: clientCertificateState.configuration.validPeerPublicKeys ?? [],
-                keyScheduler: clientCertificateState.keyScheduler)
-            else {
-                logger.error("certificate verification failed")
-                throw TLSError.certificateError
-            }
-            logger.info("client certificate trusted")
+        private init(originalState clientCertificateState: ClientCertificateState, clientCertificateVerifyBytes: ByteBuffer) throws(TLSError) {
             self.configuration = clientCertificateState.configuration
             self.keyScheduler = clientCertificateState.keyScheduler
             self.clientQUICTransportParameters = clientCertificateState.clientQUICTransportParameters
@@ -1511,6 +1595,27 @@ extension ServerHandshakeState {
             self.epskNegotiated = clientCertificateState.epskNegotiated
             self.pskNegotiationAttempted = clientCertificateState.pskNegotiationAttempted
             try keyScheduler.addPostFinishedMessageToTransportHash(clientCertificateVerifyBytes)
+        }
+
+        private init(originalState awaitingState: AwaitingClientVerificationState, clientCertificateVerifyBytes: ByteBuffer) throws(TLSError) {
+            self.configuration = awaitingState.configuration
+            self.keyScheduler = awaitingState.keyScheduler
+            self.clientQUICTransportParameters = awaitingState.clientQUICTransportParameters
+            self.selectedALPN = awaitingState.selectedALPN
+            self.negotiatedCiphersuite = awaitingState.negotiatedCiphersuite
+            self.earlyDataPermitted = awaitingState.earlyDataPermitted
+            self.negotiatedGroup = awaitingState.negotiatedGroup
+            self.epskNegotiated = awaitingState.epskNegotiated
+            self.pskNegotiationAttempted = awaitingState.pskNegotiationAttempted
+            try keyScheduler.addPostFinishedMessageToTransportHash(clientCertificateVerifyBytes)
+        }
+
+        static func verifiedPeer(originalState: ClientCertificateState, clientCertificateVerifyBytes: ByteBuffer) throws(TLSError) -> ClientCertificateVerifyState {
+            return try .init(originalState: originalState, clientCertificateVerifyBytes: clientCertificateVerifyBytes)
+        }
+
+        static func verifiedPeer(originalState: AwaitingClientVerificationState, clientCertificateVerifyBytes: ByteBuffer) throws(TLSError) -> ClientCertificateVerifyState {
+            return try .init(originalState: originalState, clientCertificateVerifyBytes: clientCertificateVerifyBytes)
         }
     }
 
@@ -1618,6 +1723,8 @@ extension ServerHandshakeState: CustomStringConvertible {
             return "awaitingSignature"
         case .clientCertificateVerify:
             return "clientCertificateVerify"
+        case .awaitingClientVerification:
+            return "awaitingClientVerification"
         case .readyForData:
             return "readyForData"
         }

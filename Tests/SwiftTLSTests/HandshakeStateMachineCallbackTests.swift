@@ -22,7 +22,7 @@ import Crypto
 #endif
 #if canImport(SwiftTLS) && !canImport(CryptoKitPrivate)
 // For importing the SwiftTLS package on the public SDK or on non-Darwin
-@testable @_spi(SwiftTLSProtocol) import SwiftTLS
+@testable @_spi(SwiftTLSProtocol) @_spi(SwiftTLSOptions) import SwiftTLS
 #endif
 
 #if canImport(Security)
@@ -172,42 +172,42 @@ class HandshakeStateMachineCallbackTests: XCTestCase {
     var configAlwaysValid: HandshakeStateMachine.Configuration {
         HandshakeStateMachine.Configuration(
             fixedKeyExchangeGroup: NamedGroup.secp384.rawValue,
-            asyncVerifier: AsyncVerifier(availableCertificateTypes: [.rawPublicKey], verificationCallback: self.fixtures.verificationCallbackValid(info:))
+            asyncVerifier: AsyncVerifier(verifiableCertificateTypes: [.rawPublicKey], verificationCallback: self.fixtures.verificationCallbackValid(info:))
         )
     }
 
     var configAlwaysInvalid: HandshakeStateMachine.Configuration {
         HandshakeStateMachine.Configuration(
             fixedKeyExchangeGroup: NamedGroup.secp384.rawValue,
-            asyncVerifier: AsyncVerifier(availableCertificateTypes: [.x509], verificationCallback: self.fixtures.verificationCallbackInvalid(info:))
+            asyncVerifier: AsyncVerifier(verifiableCertificateTypes: [.x509], verificationCallback: self.fixtures.verificationCallbackInvalid(info:))
         )
     }
 
     var configAuthRawPublicKey: HandshakeStateMachine.Configuration {
         HandshakeStateMachine.Configuration(
             fixedKeyExchangeGroup: NamedGroup.secp384.rawValue,
-            asyncVerifier: AsyncVerifier(availableCertificateTypes: [.rawPublicKey], verificationCallback: self.fixtures.verificationCallbackRawPublicKey(info:))
+            asyncVerifier: AsyncVerifier(verifiableCertificateTypes: [.rawPublicKey], verificationCallback: self.fixtures.verificationCallbackRawPublicKey(info:))
         )
     }
 
     var configAuthDummyCertificate: HandshakeStateMachine.Configuration {
         HandshakeStateMachine.Configuration(
             fixedKeyExchangeGroup: NamedGroup.secp384.rawValue,
-            asyncVerifier: AsyncVerifier(availableCertificateTypes: [.x509], verificationCallback: self.fixtures.verificationCallbackDummyCertificate(info:))
+            asyncVerifier: AsyncVerifier(verifiableCertificateTypes: [.x509], verificationCallback: self.fixtures.verificationCallbackDummyCertificate(info:))
         )
     }
 
     var configAuthDummyCertificateAsync: HandshakeStateMachine.Configuration {
         HandshakeStateMachine.Configuration(
             fixedKeyExchangeGroup: NamedGroup.secp384.rawValue,
-            asyncVerifier: AsyncVerifier(availableCertificateTypes: [.x509], verificationCallback: self.fixtures.verificationCallbackDummyCertificateAsync(info:))
+            asyncVerifier: AsyncVerifier(verifiableCertificateTypes: [.x509], verificationCallback: self.fixtures.verificationCallbackDummyCertificateAsync(info:))
         )
     }
 
     var configAuthDummyCertificateCapture: HandshakeStateMachine.Configuration {
         HandshakeStateMachine.Configuration(
             fixedKeyExchangeGroup: NamedGroup.secp384.rawValue,
-            asyncVerifier: AsyncVerifier(availableCertificateTypes: [.x509], verificationCallback: self.fixtures.verificationCallbackCapture(info:))
+            asyncVerifier: AsyncVerifier(verifiableCertificateTypes: [.x509], verificationCallback: self.fixtures.verificationCallbackCapture(info:))
         )
     }
 
@@ -215,7 +215,7 @@ class HandshakeStateMachineCallbackTests: XCTestCase {
         HandshakeStateMachine.Configuration(
             fixedKeyExchangeGroup: NamedGroup.secp384.rawValue,
             asyncVerifier: AsyncVerifier(
-                availableCertificateTypes: [.rawPublicKey],
+                verifiableCertificateTypes: [.rawPublicKey],
                 verificationCallback: self.fixtures.verificationCallbackRawPublicKeyExpectBadSignature(info:)
             )
         )
@@ -852,7 +852,7 @@ class HandshakeStateMachineCallbackTests: XCTestCase {
     // run sad path (server selects certificate type not offered by client)
     //
     //    Server selects server_certificate_type not in client's offer
-    //    - Client configured with availableCertificateTypes: [.rawPublicKey] (only offers RPK)
+    //    - Client configured with verifiableCertificateTypes: [.rawPublicKey] (only offers RPK)
     //    - Server EncryptedExtensions sends server_certificate_type = .x509
     //    - Expected: TLSError.negotiationFailed at processHandshake() (line 746 of HandshakeState.swift — confirmNegotiated returns nil)
     func testReadNetworkDataServerSelectsUnsupportedTypeX509() throws {
@@ -911,7 +911,7 @@ class HandshakeStateMachineCallbackTests: XCTestCase {
     // run sad path (server selects certificate type not offered by client)
     //
     //    Server sends server_certificate_type when client didn't send the extension
-    //    - Client configured with availableCertificateTypes: [.x509] only (so client omits the extension per RFC 7250 4.1, and
+    //    - Client configured with verifiableCertificateTypes: [.x509] only (so client omits the extension per RFC 7250 4.1, and
     //    clientHello.serverCertificateTypes defaults to [.x509])
     //    - Server EncryptedExtensions sends server_certificate_type = .rawPublicKey
     //    - Expected: TLSError.negotiationFailed — the client's stored list is [.x509], and confirmNegotiated(.rawPublicKey) returns nil
@@ -966,24 +966,96 @@ class HandshakeStateMachineCallbackTests: XCTestCase {
         }
     }
 
-    // sad path (client auth mismatch)
-    //
-    //    Server selects client_certificate_type not in client's offer
-    //    - Client configured with a signingKey (so it sends client_certificate_type = [.rawPublicKey])
-    //    - Server EncryptedExtensions sends client_certificate_type = .x509
-    //    - Expected: TLSError.negotiationFailed (line 754)
-    func testClientAuthMismatchServerSendsX509() throws {
-        throw XCTSkip("mTLS not implemented")
+    /// Drives a client up to EncryptedExtensions and asserts how it rejects them.
+    private func assertEncryptedExtensionsRejected(
+        configuration: HandshakeStateMachine.Configuration,
+        serverCertificateType: CertificateType?,
+        additionalExtensions: [Extension],
+        expected: TLSError,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) throws {
+        var stateMachine = try HandshakeStateMachine(configuration: configuration)
+        var parser = HandshakeMessageParser()
+        var scheduler = ClientSessionKeyManager<SHA384>()
+        var networkBuffer = ByteBuffer(data: Data())
+
+        var clientHelloBytes = try stateMachine.startHandshake().handshakeBytesToSend!
+        parser.appendBytes(&clientHelloBytes)
+        guard let message = try parser.parseHandshakeMessage(),
+              case .clientHello(var hello) = message.message else {
+            XCTFail("expected a client hello", file: file, line: line)
+            return
+        }
+        _ = try scheduler.sendingClientHello(clientHello: &hello, sessionToResume: nil, epsks: [], useRawEPSKs: false, currentTime: Date())
+
+        var inputBuffer = stub_serverHelloBuffer
+        networkBuffer.writeBuffer(&inputBuffer)
+        let (_, keyData) = try self.serverPrivateKey.encap(publicKeyData: hello.clientKeyShare.keyExchange.readableBytesView)
+        try scheduler.postServerHello(ecdheSecret: SymmetricKey(data: keyData), serverHelloBytes: networkBuffer)
+        stateMachine.receivedNetworkData(&networkBuffer)
+        _ = try stateMachine.processHandshake()
+
+        inputBuffer = makeEncryptedExtensionsBuffer(
+            serverCertificateType: serverCertificateType,
+            additionalExtensions: additionalExtensions
+        )
+        networkBuffer.writeBuffer(&inputBuffer)
+        try scheduler.addPreFinishedMessageToTransportHash(networkBuffer)
+        stateMachine.receivedNetworkData(&networkBuffer)
+        XCTAssertThrowsError(try stateMachine.processHandshake(), file: file, line: line) { error in
+            XCTAssertEqual(error as? TLSError, expected, file: file, line: line)
+        }
     }
 
     // sad path (client auth mismatch)
     //
     //    Server selects client_certificate_type not in client's offer
-    //    - Client configured with a signingKey (so it sends client_certificate_type = [.x509])
+    //    - Client configured with a signingKey (so it sends client_certificate_type = [.rawPublicKey])
+    //    - Server EncryptedExtensions sends client_certificate_type = .x509
+    //    - Expected: TLSError.negotiationFailed
+    func testClientAuthMismatchServerSendsX509() throws {
+        try assertEncryptedExtensionsRejected(
+            configuration: HandshakeStateMachine.Configuration(
+                fixedKeyExchangeGroup: NamedGroup.secp384.rawValue,
+                signingKey: .p256(P256.Signing.PrivateKey()),
+                asyncVerifier: AsyncVerifier(
+                    verifiableCertificateTypes: [.rawPublicKey],
+                    verificationCallback: self.fixtures.verificationCallbackRawPublicKey(info:)
+                )
+            ),
+            serverCertificateType: .rawPublicKey,
+            additionalExtensions: [.clientCertificateType(.selection(.x509))],
+            expected: .negotiationFailed
+        )
+    }
+
+    // sad path (client auth mismatch)
+    //
+    //    Server selects client_certificate_type not in client's offer
+    //    - Client configured with an authenticator for x509 (so it sends client_certificate_type = [.x509])
     //    - Server EncryptedExtensions sends client_certificate_type = .rawPublicKey
-    //    - Expected: TLSError.negotiationFailed (line 754)
+    //    - Expected: TLSError.negotiationFailed
     func testClientAuthMismatchServerSendsRPK() throws {
-        throw XCTSkip("mTLS not implemented")
+        try assertEncryptedExtensionsRejected(
+            configuration: HandshakeStateMachine.Configuration(
+                fixedKeyExchangeGroup: NamedGroup.secp384.rawValue,
+                asyncVerifier: AsyncVerifier(
+                    verifiableCertificateTypes: [.x509],
+                    verificationCallback: self.fixtures.verificationCallbackDummyCertificate(info:)
+                ),
+                // Never invoked: the handshake fails before a certificate is requested.
+                asyncAuthenticator: AsyncAuthenticator(
+                    providableCertificateTypes: [.x509],
+                    getCertificateChain: { _ in .unavailable(reason: "not exercised") },
+                    signTranscriptHash: { _ in .unavailable(reason: "not exercised") }
+                )
+            ),
+            // x509 is the default, so the helper omits server_certificate_type entirely.
+            serverCertificateType: .x509,
+            additionalExtensions: [.clientCertificateType(.selection(.rawPublicKey))],
+            expected: .negotiationFailed
+        )
     }
 
     // sad path (client auth mismatch)
@@ -1548,4 +1620,146 @@ class HandshakeStateMachineCallbackTests: XCTestCase {
         // The ClientHello must NOT contain a pre_shared_key extension --> resumption was not attempted.
         XCTAssertNil(resumingHello.preSharedKeyExtension)
     }
+
+    // MARK: - ClientHello certificate_type extensions
+
+    /// Returns the `server_certificate_type` and `client_certificate_type` offers in the
+    /// ClientHello this configuration produces, or `nil` for an extension that is absent.
+    ///
+    /// Reads the raw extension list rather than `ClientHello.serverCertificateTypes`, because
+    /// that accessor substitutes the RFC 7250 default of `[.x509]` and so cannot distinguish
+    /// "absent" from "offered x509".
+    private func clientHelloCertificateTypes(
+        _ configuration: HandshakeStateMachine.Configuration
+    ) throws -> (server: [CertificateType]?, client: [CertificateType]?) {
+        var stateMachine = try HandshakeStateMachine(configuration: configuration)
+        guard var clientHelloBytes = try stateMachine.startHandshake().handshakeBytesToSend else {
+            XCTFail("client produced no ClientHello")
+            return (nil, nil)
+        }
+        var parser = HandshakeMessageParser()
+        parser.appendBytes(&clientHelloBytes)
+        guard let message = try parser.parseHandshakeMessage(),
+              case .clientHello(let hello) = message.message else {
+            XCTFail("failed to parse the ClientHello")
+            return (nil, nil)
+        }
+
+        var server: [CertificateType]? = nil
+        var client: [CertificateType]? = nil
+        for ext in hello.extensions {
+            if case .serverCertificateType(.offer(let types)) = ext {
+                server = types
+            } else if case .clientCertificateType(.offer(let types)) = ext {
+                client = types
+            }
+        }
+        return (server, client)
+    }
+
+    // A client with only a raw public key signing key must not claim it can present x509.
+    // Regression test: `providableClientCertificateTypes` used to read a module-wide constant
+    // that conflated "types this build supports" with "types this configuration can present".
+    func testClientHelloRawPublicKeyAuthOffersOnlyRawPublicKey() throws {
+        let clientKey = P256.Signing.PrivateKey()
+        let types = try clientHelloCertificateTypes(
+            HandshakeStateMachine.Configuration(
+                fixedKeyExchangeGroup: NamedGroup.secp384.rawValue,
+                signingKey: .p256(clientKey),
+                asyncVerifier: AsyncVerifier(
+                    verifiableCertificateTypes: [.rawPublicKey],
+                    verificationCallback: self.fixtures.verificationCallbackRawPublicKey(info:)
+                )
+            )
+        )
+        XCTAssertEqual(types.server, [CertificateType.rawPublicKey])
+        XCTAssertEqual(types.client, [CertificateType.rawPublicKey])
+    }
+
+    // No way to authenticate, so no client_certificate_type is offered at all.
+    func testClientHelloWithoutClientAuthOffersNoClientCertificateType() throws {
+        let types = try clientHelloCertificateTypes(self.configAuthRawPublicKey)
+        XCTAssertEqual(types.server, [CertificateType.rawPublicKey])
+        XCTAssertNil(types.client)
+    }
+
+    // Per RFC 7250 x509 is the default, so an x509-only offer is omitted entirely.
+    func testClientHelloX509OnlyVerifierOffersNoExtensions() throws {
+        let types = try clientHelloCertificateTypes(self.configAuthDummyCertificate)
+        XCTAssertNil(types.server)
+        XCTAssertNil(types.client)
+    }
+
+    // An x509-presenting client does offer client_certificate_type, because the absence of
+    // that extension would mean x509 for a client that cannot present one.
+    func testClientHelloCertificateAuthOffersX509ClientCertificateType() throws {
+        let types = try clientHelloCertificateTypes(
+            HandshakeStateMachine.Configuration(
+                fixedKeyExchangeGroup: NamedGroup.secp384.rawValue,
+                asyncVerifier: AsyncVerifier(
+                    verifiableCertificateTypes: [.x509],
+                    verificationCallback: self.fixtures.verificationCallbackDummyCertificate(info:)
+                ),
+                // Never invoked: this test only builds the ClientHello.
+                asyncAuthenticator: AsyncAuthenticator(
+                    providableCertificateTypes: [.x509],
+                    getCertificateChain: { _ in .unavailable(reason: "not exercised") },
+                    signTranscriptHash: { _ in .unavailable(reason: "not exercised") }
+                )
+            )
+        )
+        XCTAssertNil(types.server)
+        XCTAssertEqual(types.client, [CertificateType.x509])
+    }
+
+    // A verifier that accepts both types is not x509-only, so the extension is sent.
+    func testClientHelloVerifierWithBothTypesOffersBoth() throws {
+        let types = try clientHelloCertificateTypes(
+            HandshakeStateMachine.Configuration(
+                fixedKeyExchangeGroup: NamedGroup.secp384.rawValue,
+                asyncVerifier: AsyncVerifier(
+                    verifiableCertificateTypes: [.x509, .rawPublicKey],
+                    verificationCallback: self.fixtures.verificationCallbackDummyCertificate(info:)
+                )
+            )
+        )
+        XCTAssertEqual(types.server, [CertificateType.x509, .rawPublicKey])
+        XCTAssertNil(types.client)
+    }
+
+    // The asymmetric case: a device presents a raw public key while verifying the server's
+    // x509 chain. The two directions are negotiated independently.
+    func testClientHelloRawPublicKeyAuthWithX509Verification() throws {
+        let clientKey = P256.Signing.PrivateKey()
+        let types = try clientHelloCertificateTypes(
+            HandshakeStateMachine.Configuration(
+                fixedKeyExchangeGroup: NamedGroup.secp384.rawValue,
+                signingKey: .p256(clientKey),
+                asyncVerifier: AsyncVerifier(
+                    verifiableCertificateTypes: [.x509],
+                    verificationCallback: self.fixtures.verificationCallbackDummyCertificate(info:)
+                )
+            )
+        )
+        XCTAssertNil(types.server)
+        XCTAssertEqual(types.client, [CertificateType.rawPublicKey])
+    }
+
+    // An EPSK replaces the certificate exchange, so neither extension is offered.
+    func testClientHelloWithEPSKOffersNoCertificateTypes() throws {
+        let epsk = try EPSK(
+            externalIdentity: ByteBuffer(bytes: Array("test-identity".utf8)),
+            epsk: SymmetricKey(size: .bits256),
+            context: nil
+        )
+        let types = try clientHelloCertificateTypes(
+            HandshakeStateMachine.Configuration(
+                fixedKeyExchangeGroup: NamedGroup.secp384.rawValue,
+                epsk: epsk
+            )
+        )
+        XCTAssertNil(types.server)
+        XCTAssertNil(types.client)
+    }
+
 }

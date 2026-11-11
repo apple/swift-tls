@@ -53,6 +53,27 @@ extension ServerHandshakeStateMachine {
         case externalPreSharedKeyAuthCallback(externalPSKSelectionCallback)
 
         case certificateAuthCallbacks(AsyncAuthenticator)
+
+        /// Whether a handshake using this method exchanges certificates at all.
+        ///
+        /// An EPSK authenticates both peers by itself and sends no
+        /// `CertificateRequest`, so client authentication has nothing to attach to.
+        var exchangesCertificates: Bool {
+            switch self {
+            case .noAuthAvailable, .rawPublicKeyAuth, .certificateAuthCallbacks:
+                return true
+            case .externalPreSharedKeyAuth, .externalPreSharedKeyAuthCallback:
+                return false
+            }
+        }
+    }
+
+    enum VerificationMethod {
+        case none
+
+        case rawPublicKey([P256.Signing.PublicKey])
+
+        case certificateCallbacks(AsyncVerifier)
     }
 
     /// Configuration for the Handshake State Machine.
@@ -71,8 +92,8 @@ extension ServerHandshakeStateMachine {
         /// The authentication method for this configuration.
         internal let authenticationMethod: AuthenticationMethod
 
-        /// Public keys for trusted clients
-        var _validPeerPublicKeys: [P256.Signing.PublicKey]? = nil
+        /// How this server verifies the client, when it requires client authentication.
+        internal let verificationMethod: VerificationMethod
 
         /// List of cipher suites to use for the handshake
         let supportedCipherSuites: [CipherSuite]?
@@ -87,11 +108,19 @@ extension ServerHandshakeStateMachine {
         var transportIsQUIC: Bool
 
         /// `true` when the client is required to authenticate with RPK or a certificate.
-        var clientAuthRequired: Bool
+        var clientAuthRequired: Bool {
+            if case .none = verificationMethod {
+                return false
+            }
+            return true
+        }
 
         /// Public keys for trusted clients.
         var validPeerPublicKeys: [P256.Signing.PublicKey]? {
-            return _validPeerPublicKeys
+            if case .rawPublicKey(let publicKeys) = verificationMethod {
+                return publicKeys
+            }
+            return nil
         }
 
         var publicKey: PublicKey? {
@@ -129,6 +158,156 @@ extension ServerHandshakeStateMachine {
             return nil
         }
 
+        var asyncVerifier: AsyncVerifier? {
+            if case .certificateCallbacks(let asyncVerifier) = verificationMethod {
+                return asyncVerifier
+            }
+            return nil
+        }
+
+        /// The certificate types this server can present, negotiated via `server_certificate_type`.
+        ///
+        /// Empty when this server presents no certificate at all, which is the case for an EPSK.
+        /// There is then nothing to negotiate and the extension is omitted.
+        var providableServerCertificateTypes: [CertificateType] {
+            guard authenticationMethod.exchangesCertificates else {
+                return []
+            }
+            if let asyncAuthenticator {
+                return asyncAuthenticator.providableCertificateTypes
+            }
+            // Without an authenticator the server can only present a raw public key.
+            return [.rawPublicKey]
+        }
+
+        /// The certificate types this server can verify from the client, negotiated via
+        /// `client_certificate_type`.
+        ///
+        /// Deliberately independent of `providableServerCertificateTypes`: what this server can
+        /// present says nothing about what it can verify.
+        var verifiableClientCertificateTypes: [CertificateType] {
+            switch verificationMethod {
+            case .certificateCallbacks(let asyncVerifier):
+                return asyncVerifier.verifiableCertificateTypes
+            case .rawPublicKey:
+                guard case .offer(let types) = PeerCertificateBundle.verificationCertificateTypes else {
+                    return []
+                }
+                return types
+            case .none:
+                return []
+            }
+        }
+
+        /// Turns the supplied options into one answer per job.
+        ///
+        /// Returns `nil` when the options contradict each other. Precedence among mutually
+        /// exclusive authentication inputs is unchanged: a signing key wins over EPSKs, which
+        /// win over an EPSK callback, which wins over the certificate callbacks.
+        static func resolve(
+            signingKey: SwiftTLSPrivateKey?,
+            validPeerPublicKeys: [P256.Signing.PublicKey]?,
+            epsks: [EPSK]?,
+            epskSelectionCallback: externalPSKSelectionCallback?,
+            useRawEPSKs: Bool,
+            clientAuthentication: ClientAuthenticationPolicy,
+            supportedCipherSuites: [CipherSuite]?,
+            asyncAuthenticator: AsyncAuthenticator?,
+            asyncVerifier: AsyncVerifier?,
+            fallbackAuthentication: AuthenticationMethod? = nil
+        ) throws(TLSError) -> (authentication: AuthenticationMethod, verification: VerificationMethod)? {
+            var verification: VerificationMethod = .none
+            if clientAuthentication == .required {
+                if let validPeerPublicKeys, !validPeerPublicKeys.isEmpty {
+                    verification = .rawPublicKey(validPeerPublicKeys)
+                } else if let asyncVerifier {
+                    verification = .certificateCallbacks(asyncVerifier)
+                }
+                // Having nothing to verify with is resolved below, once the authentication
+                // method is known: whether it is an error depends on that method.
+            }
+
+            let authentication: AuthenticationMethod
+            if let signingKey {
+                authentication = .rawPublicKeyAuth(PrivateKey.init(signingKey))
+                if epsks != nil {
+                    logger.error("CONFIGURATION: server epsk set but not used as we have raw public keys set")
+                }
+                if epskSelectionCallback != nil {
+                    logger.error("CONFIGURATION: epskSelectionCallback set but not used. we have raw public keys set")
+                }
+                if asyncAuthenticator != nil {
+                    logger.error("CONFIGURATION: asyncAuthenticator set but not used. we have raw public keys set")
+                }
+            } else if let epsks {
+                // EPSKs are only supported for TLS_AES_256_GCM_SHA384
+                guard supportedCipherSuites == nil || supportedCipherSuites == [.TLS_AES_256_GCM_SHA384] else {
+                    throw TLSError.unknownCiphersuite
+                }
+
+                var PSKs: [GeneralEPSK] = []
+                for epsk in epsks {
+                    if useRawEPSKs {
+                        PSKs.append(GeneralEPSK(RawEPSK(identity: epsk.externalIdentity, epsk: epsk.epsk)))
+                    } else {
+                        let psks = try epsk.deriveImportedPSKs(for: [TLSKDFIdentifier.HKDF_SHA384])
+                        PSKs.append(contentsOf: psks.map { GeneralEPSK($0) })
+                    }
+                }
+                authentication = .externalPreSharedKeyAuth(PSKs)
+                if epskSelectionCallback != nil {
+                    logger.error("CONFIGURATION: epskSelectionCallback set but not used. we have epsks set")
+                }
+                if asyncAuthenticator != nil {
+                    logger.error("CONFIGURATION: asyncAuthenticator set but not used. we have epsks set")
+                }
+            } else if let epskSelectionCallback {
+                authentication = .externalPreSharedKeyAuthCallback(epskSelectionCallback)
+                if asyncAuthenticator != nil {
+                    logger.error("CONFIGURATION: asyncAuthenticator set but not used. we have epskSelectionCallback set")
+                }
+            } else if let asyncAuthenticator {
+                authentication = .certificateAuthCallbacks(asyncAuthenticator)
+            } else if let fallbackAuthentication, case .none = verification {
+                // Only applies when nothing else is configured and there is nothing to
+                // verify, so it cannot mask a failure found above.
+                authentication = fallbackAuthentication
+            } else {
+                authentication = .noAuthAvailable
+            }
+
+            if clientAuthentication == .required, case .none = verification {
+                // Never silently downgrade a server that was asked to require client auth.
+                guard !authentication.exchangesCertificates else {
+                    logger.error("CONFIGURATION: client authentication required with no way to verify the client")
+                    return nil
+                }
+                logger.info("CONFIGURATION: client authentication required but the configured authentication method already authenticates the client; ignoring")
+            }
+
+            return (authentication, verification)
+        }
+
+        static func validate(_ authentication: AuthenticationMethod, _ verification: VerificationMethod) -> Bool {
+            switch (authentication, verification) {
+            // A server must always be able to authenticate itself.
+            case (.noAuthAvailable, _):
+                return false
+
+            // An EPSK authenticates both peers by itself; no certificates are exchanged.
+            case (.externalPreSharedKeyAuth, .none),
+                 (.externalPreSharedKeyAuthCallback, .none):
+                return true
+            case (.externalPreSharedKeyAuth, _),
+                 (.externalPreSharedKeyAuthCallback, _):
+                return false
+
+            case (.rawPublicKeyAuth, _),
+                 (.certificateAuthCallbacks, _):
+                return true
+            }
+        }
+
         init(
             serverName: String? = nil,
             quicTransportParameters: ByteBuffer? = nil,
@@ -140,95 +319,65 @@ extension ServerHandshakeStateMachine {
             epsks: [EPSK]? = nil,
             epskSelectionCallback: externalPSKSelectionCallback? = nil,
             useRawEPSKs: Bool = false,
-            clientAuthRequired: Bool = false,
+            clientAuthentication: ClientAuthenticationPolicy = .disabled,
             enableEarlyData: Bool = false,
-            asyncAuthenticator: AsyncAuthenticator? = nil
+            asyncAuthenticator: AsyncAuthenticator? = nil,
+            asyncVerifier: AsyncVerifier? = nil,
+            fallbackAuthentication: AuthenticationMethod? = nil
         ) {
+            self.serverName = serverName
+            self.quicTransportParameters = quicTransportParameters
+            self.alpn = alpn
+            self.transportIsQUIC = transportIsQUIC
+            self.enableEarlyData = enableEarlyData
+            self.supportedCipherSuites = supportedCipherSuites
+
             do throws(TLSError) {
-                self.serverName = serverName
-                self.quicTransportParameters = quicTransportParameters
-                self.alpn = alpn
-                self.transportIsQUIC = transportIsQUIC
-                self.enableEarlyData = enableEarlyData
-                self.clientAuthRequired = clientAuthRequired
-                self.supportedCipherSuites = supportedCipherSuites
                 if transportIsQUIC {
                     guard quicTransportParameters != nil else {
-                        self.validConfiguration = false
                         self.authenticationMethod = .noAuthAvailable
+                        self.verificationMethod = .none
+                        self.validConfiguration = false
                         return
                     }
                 }
 
-                // RPKs
-                if let signingKey {
-                    // Mutual RPK Auth available
-                    self.authenticationMethod = .rawPublicKeyAuth(PrivateKey.init(signingKey))
-                    if clientAuthRequired {
-                        guard let validPeerPublicKeys else {
-                            self.validConfiguration = false
-                            return
-                        }
-                        _validPeerPublicKeys = validPeerPublicKeys
-                    }
-                    self.enableEarlyData = enableEarlyData
-
-                    if epsks != nil {
-                        logger.error("CONFIGURATION: server epsk set but not used as we have raw public keys set")
-                    }
-                    if epskSelectionCallback != nil {
-                        logger.error("CONFIGURATION: epskSelectionCallback set but not used. we have raw public keys set")
-                    }
-                    if asyncAuthenticator != nil {
-                        logger.error("CONFIGURATION: asyncAuthenticator set but not used. we have raw public keys set")
-                    }
-                // EPSKs
-                } else if let epsks {
-                    // EPSKs are only supported for TLS_AES_256_GCM_SHA384
-                    guard supportedCipherSuites == nil || supportedCipherSuites == [.TLS_AES_256_GCM_SHA384] else {
-                        throw TLSError.unknownCiphersuite
-                    }
-
-                    self.useRawEPSKs = useRawEPSKs
-                    var PSKs: [GeneralEPSK] = []
-                    for epsk in epsks {
-                        if useRawEPSKs {
-                            PSKs.append(GeneralEPSK(RawEPSK(identity: epsk.externalIdentity, epsk: epsk.epsk)))
-                        } else {
-                            let psks = try epsk.deriveImportedPSKs(for: [TLSKDFIdentifier.HKDF_SHA384])
-                            PSKs.append(contentsOf: psks.map { GeneralEPSK($0) })
-                        }
-                    }
-                    authenticationMethod = .externalPreSharedKeyAuth(PSKs)
-                    if epskSelectionCallback != nil {
-                        logger.error("CONFIGURATION: epskSelectionCallback set but not used. we have epsks set")
-                    }
-                    if asyncAuthenticator != nil {
-                        logger.error("CONFIGURATION: asyncAuthenticator set but not used. we have epsks set")
-                    }
-                } else if let epskSelectionCallback {
-                    self.useRawEPSKs = useRawEPSKs
-                    self.authenticationMethod = .externalPreSharedKeyAuthCallback(epskSelectionCallback)
-                    if asyncAuthenticator != nil {
-                        logger.error("CONFIGURATION: asyncAuthenticator set but not used. we have epskSelectionCallback set")
-                    }
-                } else if let asyncAuthenticator {
-                    self.authenticationMethod = .certificateAuthCallbacks(asyncAuthenticator)
-                    // mTLS is currently not supported with certificate callbacks.
-                    if clientAuthRequired {
-                        logger.error("CONFIGURATION: mTLS is not supported with certificate callbacks")
-                        self.validConfiguration = false
-                        return
-                    }
-                } else {
-                    self.validConfiguration = false
+                guard let (authentication, verification) = try Self.resolve(
+                    signingKey: signingKey,
+                    validPeerPublicKeys: validPeerPublicKeys,
+                    epsks: epsks,
+                    epskSelectionCallback: epskSelectionCallback,
+                    useRawEPSKs: useRawEPSKs,
+                    clientAuthentication: clientAuthentication,
+                    supportedCipherSuites: supportedCipherSuites,
+                    asyncAuthenticator: asyncAuthenticator,
+                    asyncVerifier: asyncVerifier,
+                    fallbackAuthentication: fallbackAuthentication
+                ) else {
                     self.authenticationMethod = .noAuthAvailable
+                    self.verificationMethod = .none
+                    self.validConfiguration = false
                     return
+                }
+                self.authenticationMethod = authentication
+                self.verificationMethod = verification
+
+                guard Self.validate(authentication, verification) else {
+                    self.validConfiguration = false
+                    return
+                }
+
+                switch authentication {
+                case .externalPreSharedKeyAuth, .externalPreSharedKeyAuthCallback:
+                    self.useRawEPSKs = useRawEPSKs
+                default:
+                    break
                 }
                 self.validConfiguration = true
             } catch {
-                self.validConfiguration = false
                 self.authenticationMethod = .noAuthAvailable
+                self.verificationMethod = .none
+                self.validConfiguration = false
             }
         }
     }

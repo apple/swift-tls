@@ -143,7 +143,7 @@ class TestConfigurationGenerator {
             validPeerPublicKeys: nil,
             epsks: epsks,
             useRawEPSKs: raw,
-            clientAuthRequired: false,
+            clientAuthentication: .disabled,
             enableEarlyData: earlyData
         )
     }
@@ -248,7 +248,7 @@ class TestConfigurationGenerator {
             signingKey: serverKey,
             validPeerPublicKeys: trustedPubKeys,
             supportedCipherSuites: supportedCipherSuites,
-            clientAuthRequired: clientAuthReq,
+            clientAuthentication: clientAuthReq ? .required : .disabled,
             enableEarlyData: enableEarlyData)
     }
 }
