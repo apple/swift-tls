@@ -7,19 +7,22 @@ on:
 jobs:
   tests:
     name: Test
-    uses: swiftlang/github-workflows/.github/workflows/swift_package_test.yml@0.0.17
+    uses: swiftlang/github-workflows/.github/workflows/package_test.yml@0.0.18
     with:
-      enable_macos_checks: true
-      macos_exclude_xcode_versions: "[{\"xcode_version\": \"swift_6.1\"}, {\"xcode_version\": \"swift_6.2\"}]"
-      linux_exclude_swift_versions: '[{"swift_version": "6.1"}, {"swift_version": "6.2"}]'
-      linux_build_command: |
-        swift test -c release
-      enable_windows_checks: false
-      enable_android_sdk_build: true
-      enable_android_sdk_checks: true
+      name: tests
+      linux_command: swift test -c release
+
+      # Not run by this package.
+      enable_windows: false
+      enable_macos_swiftly: false
+      enable_linux_static_sdk_build: false
+      enable_wasm_sdk_build: false
+      enable_embedded_wasm_sdk_build: false
+      enable_cxx_interop: false
+      enable_freebsd: false
   soundness:
     name: Soundness
-    uses: swiftlang/github-workflows/.github/workflows/soundness.yml@main
+    uses: swiftlang/github-workflows/.github/workflows/soundness.yml@0.0.18
     with:
       unacceptable_language_check_enabled: false
       format_check_enabled: false
