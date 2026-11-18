@@ -919,13 +919,26 @@ extension HandshakeState {
 #endif
                     throw TLSError.negotiationFailed
                 }
-                guard let negotiatedClientCertType = newSession.clientCertificateTypes.confirmNegotiated(clientCertificateType ?? .x509) else {
+                // RFC 7250 section 4.2 has a server that will not request a client certificate
+                // omit `client_certificate_type` entirely, so an absent extension is not a
+                // selection of the default type and there is nothing to confirm against our
+                // offer. Only check what the server actually chose. `.x509` stays the default
+                // for presentation if a CertificateRequest arrives anyway, and
+                // `sendClientSecondFlight` sends an empty certificate message when we cannot
+                // provide that type.
+                let negotiatedClientCertType: CertificateType
+                if let clientCertificateType {
+                    guard let confirmed = newSession.clientCertificateTypes.confirmNegotiated(clientCertificateType) else {
 #if SWIFTTLS_EXCLAVECORE
-                    logger.error("server chose non-offered client certificate type \(String(describing: clientCertificateType ?? .x509))")
+                        logger.error("server chose non-offered client certificate type \(String(describing: clientCertificateType))")
 #else
-                    logger.error("server chose non-offered client certificate type \(clientCertificateType ?? .x509)")
+                        logger.error("server chose non-offered client certificate type \(clientCertificateType)")
 #endif
-                    throw TLSError.negotiationFailed
+                        throw TLSError.negotiationFailed
+                    }
+                    negotiatedClientCertType = confirmed
+                } else {
+                    negotiatedClientCertType = .x509
                 }
 
                 self.sessionData = .newSession(.init(negotiatedCipherSuite: newSession.negotiatedCipherSuite,

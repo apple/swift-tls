@@ -567,6 +567,17 @@ class ServerHandshakeStateMachineTests: XCTestCase {
         try runSuccessfulHandshake(clientStateMachine: &clientStateMachine, serverStateMachine: &serverStateMachine, clientAuthRequired: true)
     }
 
+    // A client that holds a raw public key signing key offers `client_certificate_type`. RFC 7250
+    // Section 4.2 requires a server that sends no certificate request to omit the extension, and the
+    // client never presents a certificate then, so the handshake must complete.
+    func testClientWithSigningKeyCompletesWhenServerDoesNotRequestClientAuth() throws {
+        let clientConfig = configurationGenerator.getClientConfigWithOptions(signingKey: true)
+        let serverConfig = configurationGenerator.getServerConfigWithOptions(clientAuthReq: false)
+        var clientStateMachine = try HandshakeStateMachine(configuration: clientConfig)
+        var serverStateMachine = try ServerHandshakeStateMachine(configuration: serverConfig)
+        try runSuccessfulHandshake(clientStateMachine: &clientStateMachine, serverStateMachine: &serverStateMachine)
+    }
+
     func testClientRPKHappyPathRefKeys() throws {
         let clientConfig = configurationGenerator.getClientConfigWithOptions(refKey: true)
         let serverConfig = configurationGenerator.getServerConfigWithOptions(clientAuthReq: true, refKey: true)
