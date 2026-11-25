@@ -62,7 +62,7 @@ jobs:
 
   soundness:
     name: Soundness
-    uses: swiftlang/github-workflows/.github/workflows/soundness.yml@0.0.18
+    uses: swiftlang/github-workflows/.github/workflows/soundness.yml@0.0.19
     with:
       unacceptable_language_check_enabled: false
       format_check_enabled: false
