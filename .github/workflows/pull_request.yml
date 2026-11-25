@@ -11,6 +11,8 @@ jobs:
     with:
       name: tests
       linux_command: swift test -c release
+      swift_flags: -Xswiftc -warnings-as-errors
+      swift_nightly_flags: -Xswiftc -warnings-as-errors
 
       # Not run by this package.
       enable_windows: false

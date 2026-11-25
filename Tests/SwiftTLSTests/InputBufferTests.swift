@@ -317,7 +317,7 @@ class InputBufferTests: XCTestCase {
         buffer.writeBytes([0xAA, 0xBB, 0xCC])
         buffer.writeBytes([0xDD]) // Trailing byte left after the prefixed region.
 
-        try buffer.withInputBuffer { input in
+        buffer.withInputBuffer { input in
             let result: UInt32? = input.readLengthPrefixed(lengthAs: UInt16.self) { slice in
                 XCTAssertEqual(slice.byteCount, 3)
                 return UInt32(slice.readInteger(as: UInt8.self)!) << 16
@@ -437,7 +437,7 @@ class InputBufferTests: XCTestCase {
             let outer: UInt16?? = input.readOptional { inner in
                 inner.readInteger(as: UInt16.self)
             }
-            XCTAssertNotNil(outer)
+            XCTAssertTrue(outer != nil)
             XCTAssertNil(outer!)
             // Only the discriminator byte was consumed.
             XCTAssertEqual(input.position, 1)
@@ -465,7 +465,7 @@ class InputBufferTests: XCTestCase {
                 inner.readInteger(as: UInt16.self)
             }
             // Couldn't even read the discriminator.
-            XCTAssertNil(outer)
+            XCTAssertTrue(outer == nil)
         }
     }
 
@@ -479,7 +479,7 @@ class InputBufferTests: XCTestCase {
                 inner.readInteger(as: UInt16.self)
             }
             // Outer optional is nil (couldn't read a complete value).
-            XCTAssertNil(outer)
+            XCTAssertTrue(outer == nil)
         }
     }
 
