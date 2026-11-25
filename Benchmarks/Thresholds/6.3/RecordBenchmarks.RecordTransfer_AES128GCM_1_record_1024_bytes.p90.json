@@ -1,0 +1,7 @@
+{
+  "mallocCountTotal" : 62000,
+  "mallocFreeDelta" : 0,
+  "objectAllocCount" : 15000,
+  "releaseCount" : 243001,
+  "retainCount" : 176000
+}
