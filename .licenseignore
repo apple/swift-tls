@@ -9,6 +9,7 @@
 **/*.yml
 **/Package.resolved
 .editorconfig
+.shellcheckrc
 Package.swift
 Benchmarks/Package.swift
 Package@swift-*.swift
