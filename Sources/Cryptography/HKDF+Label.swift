@@ -21,41 +21,19 @@ import CryptoKit
 @preconcurrency import Crypto
 #endif
 
-// Availability due to `CryptoKit`'s `HKDF`
-@available(macOS 11, iOS 14, tvOS 14, watchOS 7, *)
+// Availability due to `Swift`'s `OutputRawSpan`, which `HKDFLabel` uses
+@available(SwiftTLS 0.1.0, *)
 extension HKDF {
     static func expandLabel<SecretBytes: ContiguousBytes, ContextBytes: ContiguousBytes>(secret: SecretBytes, label: String, context: ContextBytes, length: Int) -> SymmetricKey {
-        // We need to build HkdfLabel:
-        //
-        // struct {
-        //   uint16 length = Length;
-        //   opaque label<7..255> = "tls13 " + Label;
-        //   opaque context<0..255> = Context;
-        // } HkdfLabel
-        //
-        // We reserve the whole space.
-        //
-        // Consider avoiding this array and synthesizing a weird DataProtocol type instead. It's a lot of work, but may
-        // plausibly be slightly faster.
-        var serializedLabel = Array<UInt8>()
-        serializedLabel.reserveCapacity(2 + 256 + 256)
-
-        let labelCount = Self.labelPrefix.utf8.count + label.utf8.count
-
-        let shortLength = UInt16(length)
-        serializedLabel.append(UInt8(truncatingIfNeeded: shortLength >> 8))
-        serializedLabel.append(UInt8(truncatingIfNeeded: shortLength))
-
-        serializedLabel.append(UInt8(labelCount))
-        serializedLabel.append(contentsOf: Self.labelPrefix.utf8)
-        serializedLabel.append(contentsOf: label.utf8)
-
-        context.withUnsafeBytes { contextPointer in
-            serializedLabel.append(UInt8(contextPointer.count))
-            serializedLabel.append(contentsOf: contextPointer)
+        guard let hkdfLabel = HKDFLabel(label: label, outputLength: length) else {
+            preconditionFailure("HkdfLabel for label \"\(label)\" and output length \(length) exceeds its field limits")
         }
 
-        return Self.expand(pseudoRandomKey: secret, info: serializedLabel, outputByteCount: length)
+        return hkdfLabel.withSerializedInfo(using: context) { info in
+            info.withUnsafeBytes { infoBytes in
+                Self.expand(pseudoRandomKey: secret, info: infoBytes, outputByteCount: length)
+            }
+        }
     }
 
     static func deriveSecret<SecretBytes: ContiguousBytes>(secret: SecretBytes, label: String, transcriptHash: H.Digest) -> SymmetricKey {
@@ -73,7 +51,7 @@ extension HKDF {
         // RFC 5869 caps HKDF-Expand at 255 blocks and HkdfLabel caps the prefixed label at 255
         // bytes; both would trap further down rather than fail gracefully.
         guard length > 0, length <= 255 * H.Digest.byteCount,
-              Self.labelPrefix.utf8.count + label.utf8.count <= 255 else {
+              HKDFLabel(label: label, outputLength: length) != nil else {
             return nil
         }
 
@@ -85,10 +63,11 @@ extension HKDF {
         return Self.expandLabel(secret: derivedSecret, label: "exporter", context: contextHash, length: length)
     }
 
-    static var labelPrefix: String {
-        return "tls13 "
-    }
+}
 
+// Availability due to `CryptoKit`'s `HKDF`
+@available(macOS 11, iOS 14, tvOS 14, watchOS 7, *)
+extension HKDF {
     static func extract(inputKeyMaterial ikm: SymmetricKey, salt: SymmetricKey) -> HashedAuthenticationCode<H> {
         // This wrapper helps us deal with the fact that these types don't neatly fit into what CryptoKit wants.
         return salt.withUnsafeBytes { saltPointer in
@@ -97,6 +76,66 @@ extension HKDF {
             #else
             Self.extract(inputKeyMaterial: ikm, salt: saltPointer)
             #endif
+        }
+    }
+}
+
+/// The `HkdfLabel` structure of RFC 8446 Section 7.1, which is the `info` input of `HKDF-Expand-Label`:
+///
+///     struct {
+///       uint16 length = Length;
+///       opaque label<7..255> = "tls13 " + Label;
+///       opaque context<0..255> = Context;
+///     } HkdfLabel
+// Availability due to `Swift`'s `OutputRawSpan`
+@available(SwiftTLS 0.1.0, *)
+struct HKDFLabel {
+    private static let prefix = "tls13 "
+
+    private let label: String
+    private let prefixedLabelByteCount: UInt8
+    private let outputLength: UInt16
+
+    /// Returns `nil` if the prefixed `label` is longer than 255 bytes or `outputLength` does not fit in a `UInt16`.
+    init?(label: String, outputLength: Int) {
+        guard let prefixedLabelByteCount = UInt8(exactly: Self.prefix.utf8.count + label.utf8.count),
+              let outputLength = UInt16(exactly: outputLength) else {
+            return nil
+        }
+
+        self.label = label
+        self.prefixedLabelByteCount = prefixedLabelByteCount
+        self.outputLength = outputLength
+    }
+
+    /// Passes the serialized `HkdfLabel` bytes for this label and `context` to `body`. The bytes are only
+    /// valid for the duration of that call.
+    ///
+    /// Traps if `context` is longer than 255 bytes.
+    func withSerializedInfo<Context: ContiguousBytes, Result>(
+        using context: Context,
+        _ body: (RawSpan) -> Result
+    ) -> Result {
+        return context.withUnsafeBytes { contextBytes in
+            let contextByteCount = UInt8(contextBytes.count)
+            // 2 bytes of length, a 1-byte label length, the label, a 1-byte context length, and the context.
+            let serializedByteCount = 2 &+ 1 &+ Int(self.prefixedLabelByteCount) &+ 1 &+ Int(contextByteCount)
+
+            return withTemporaryAllocationOfBytes(
+                capacity: serializedByteCount,
+                fill: { outputSpan in
+                    outputSpan.append(UInt8(truncatingIfNeeded: self.outputLength >> 8))
+                    outputSpan.append(UInt8(truncatingIfNeeded: self.outputLength))
+
+                    outputSpan.append(self.prefixedLabelByteCount)
+                    outputSpan.append(contentsOf: Self.prefix.utf8.span.bytes)
+                    outputSpan.append(contentsOf: self.label.utf8.span.bytes)
+
+                    outputSpan.append(contextByteCount)
+                    outputSpan.append(contentsOf: contextBytes.bytes)
+                },
+                use: body
+            )
         }
     }
 }

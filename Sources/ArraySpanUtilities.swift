@@ -149,3 +149,36 @@ extension RawSpan {
         unsafeLoad(fromByteOffset: index, as: UInt8.self)
     }
 }
+
+/// Fills a stack buffer of exactly `capacity` bytes through a bounds-checked `OutputRawSpan`, then
+/// passes the finished bytes to `use`.
+///
+/// `fill` must write every byte; otherwise this traps rather than expose uninitialized memory to `use`.
+/// The bytes passed to `use` are only valid for the duration of that call.
+///
+/// Every unsafe operation of this pattern is confined to this function.
+// Availability due to `Swift`'s `OutputRawSpan`
+@available(SwiftTLS 0.1.0, *)
+func withTemporaryAllocationOfBytes<Result>(
+    capacity: Int,
+    fill: (inout OutputRawSpan) -> Void,
+    use: (RawSpan) -> Result
+) -> Result {
+    // The temporary allocation is `capacity` bytes and lives until this closure returns, and it is
+    // not used for anything but the `OutputRawSpan` and `use`.
+    return withUnsafeTemporaryAllocation(byteCount: capacity, alignment: 1) { buffer in
+        // `buffer` is the whole of the allocation and `initializedCount` is 0, so the span starts
+        // empty with `capacity` bytes free; its `append` traps when asked to write past that.
+        var outputSpan = OutputRawSpan(buffer: buffer, initializedCount: 0)
+        fill(&outputSpan)
+        // Finalizing checks that `outputSpan` was built over `buffer`, and the count check below ensures
+        // that every byte has been initialized before `use` can read them.
+        let initializedCount = outputSpan.finalize(for: buffer)
+        precondition(
+            initializedCount == capacity,
+            "output span left \(capacity - initializedCount) of \(capacity) bytes unwritten"
+        )
+        let initializedBytes = UnsafeRawBufferPointer(buffer)
+        return use(initializedBytes.bytes)
+    }
+}
