@@ -7,29 +7,68 @@ on:
 jobs:
   tests:
     name: Test
-    uses: swiftlang/github-workflows/.github/workflows/package_test.yml@0.0.18
+    uses: swiftlang/github-workflows/.github/workflows/package_test.yml@0.0.19
     with:
       name: tests
-      linux_command: swift test -c release
       swift_flags: -Xswiftc -warnings-as-errors
-      swift_nightly_flags: -Xswiftc -warnings-as-errors
+
+      # Linux
+      linux_swift_versions: '["6.3", "6.4"]'
+      linux_command: &linux_command |
+        Build: swift build --build-tests
+        Test-Debug: swift test
+        Test-Release: swift test -c release
+      linux_static_sdk_versions: '["6.3", "6.4"]'
+
+      # Android
+      android_sdk_versions: '["6.3", "6.4"]'
+
+      # macOS
+      macos_swift_versions: '["6.3", "6.4"]'
+      macos_command: |
+        Apple: bash .github/workflows/scripts/ci-macos.sh
+        iOS: bash .github/workflows/scripts/ci-ios.sh
 
       # Not run by this package.
       enable_windows: false
       enable_macos_swiftly: false
-      enable_linux_static_sdk_build: false
       enable_wasm_sdk_build: false
       enable_embedded_wasm_sdk_build: false
       enable_cxx_interop: false
       enable_freebsd: false
+
+  tests-nightly-main:
+    # Keep this separate so that nightly failures don't affect stable version status lines.
+    name: Test (nightly-main)
+    uses: swiftlang/github-workflows/.github/workflows/package_test.yml@0.0.19
+    with:
+      name: tests-nightly-main
+
+      # Linux
+      linux_swift_versions: '["nightly-main"]'
+      linux_command: *linux_command
+      linux_static_sdk_versions: '["nightly-main"]'
+
+      # Android
+      android_sdk_versions: '["nightly-main"]'
+
+      # Not run by this package.
+      enable_macos: false
+      enable_windows: false
+      enable_macos_swiftly: false
+      enable_wasm_sdk_build: false
+      enable_embedded_wasm_sdk_build: false
+      enable_cxx_interop: false
+      enable_freebsd: false
+
   soundness:
     name: Soundness
-    uses: swiftlang/github-workflows/.github/workflows/soundness.yml@0.0.18
+    uses: swiftlang/github-workflows/.github/workflows/soundness.yml@0.0.19
     with:
       unacceptable_language_check_enabled: false
       format_check_enabled: false
       license_header_check_enabled: true
       api_breakage_check_enabled: false
-      shell_check_enabled: false
+      shell_check_enabled: true
       license_header_check_project_name: "Swift"
       api_breakage_check_container_image: "swiftlang/swift:nightly-6.3-jammy"
