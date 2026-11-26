@@ -72,3 +72,29 @@ jobs:
       shell_check_enabled: true
       license_header_check_project_name: "Swift"
       api_breakage_check_container_image: "swiftlang/swift:nightly-6.3-jammy"
+
+  benchmarks-linux:
+    # `SWIFT_DETERMINISTIC_HASHING` fixes the hash seed; otherwise retain and release counts vary
+    # from run to run and cannot hold a threshold.
+    name: Benchmarks (Linux)
+    uses: swiftlang/github-workflows/.github/workflows/benchmarks.yml@0.0.19
+    with:
+      name: benchmarks-linux
+      benchmark_package_paths: '["Benchmarks"]'
+      swift_package_arguments: "--disable-sandbox"
+      linux_swift_versions: '["current-1", "current", "nightly-main"]'
+      linux_env_vars: '{"SWIFT_DETERMINISTIC_HASHING": "1"}'
+
+  benchmarks-macos:
+    # The threshold path has no operating-system component, so this job is named by Xcode version
+    # to keep its directory apart from the Linux jobs'.
+    name: Benchmarks (macOS)
+    uses: swiftlang/github-workflows/.github/workflows/benchmarks.yml@0.0.19
+    with:
+      name: benchmarks-macos
+      benchmark_package_paths: '["Benchmarks"]'
+      swift_package_arguments: "--disable-sandbox"
+      enable_linux: false
+      enable_macos: true
+      macos_xcode_versions: '["latest-beta"]'
+      macos_env_vars: '{"SWIFT_DETERMINISTIC_HASHING": "1"}'
