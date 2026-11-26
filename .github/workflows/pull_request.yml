@@ -10,6 +10,7 @@ jobs:
     uses: swiftlang/github-workflows/.github/workflows/package_test.yml@0.0.19
     with:
       name: tests
+      swift_flags: -Xswiftc -warnings-as-errors
 
       # Linux
       linux_swift_versions: '["6.3", "6.4"]'
