@@ -128,8 +128,8 @@ struct HKDFLabel {
                     outputSpan.append(UInt8(truncatingIfNeeded: self.outputLength))
 
                     outputSpan.append(self.prefixedLabelByteCount)
-                    outputSpan.append(contentsOf: Self.prefix.utf8.span.bytes)
-                    outputSpan.append(contentsOf: self.label.utf8.span.bytes)
+                    outputSpan.append(contentsOf: Self.prefix.utf8)
+                    outputSpan.append(contentsOf: self.label.utf8)
 
                     outputSpan.append(contextByteCount)
                     outputSpan.append(contentsOf: contextBytes.bytes)

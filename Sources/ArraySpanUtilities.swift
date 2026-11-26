@@ -116,6 +116,26 @@ extension OutputRawSpan {
             initializedCount += bytes.byteCount
         }
     }
+
+    /// Appends the bytes of `bytes` to this output span.
+    ///
+    /// Traps if `bytes` has more elements than `freeCapacity`. This copies in one operation when
+    /// `bytes` has contiguous storage, as a native `String.UTF8View` does, and appends one byte at
+    /// a time otherwise. Use it to append a `String`'s UTF-8 bytes where `String.UTF8View.span` is
+    /// unavailable, such as on watchOS.
+    mutating func append<Bytes: Sequence<UInt8>>(contentsOf bytes: Bytes) {
+        let copiedFromContiguousStorage: Void? = bytes.withContiguousStorageIfAvailable { buffer in
+            let rawBuffer = UnsafeRawBufferPointer(buffer)
+            self.append(contentsOf: rawBuffer.bytes)
+        }
+        if copiedFromContiguousStorage != nil {
+            return
+        }
+
+        for byte in bytes {
+            self.append(byte)
+        }
+    }
 }
 
 // Availability due to `Swift`'s `OutputSpan`
