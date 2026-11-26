@@ -1108,7 +1108,7 @@ class HandshakeStateMachineTests: XCTestCase {
     }
 
     func testX509Forbidden() throws {
-        guard case .offer(let offers) = PeerCertificateBundle.verificationCertificateTypes else {
+        guard case .offer = PeerCertificateBundle.verificationCertificateTypes else {
             XCTFail("Unexpected server certificate type offer")
             return
         }
