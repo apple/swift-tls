@@ -43,6 +43,7 @@ jobs:
       name: benchmarks-linux
       benchmark_package_paths: '["Benchmarks"]'
       swift_package_arguments: "--disable-sandbox"
+      linux_swift_versions: '["current-1", "current", "nightly-main"]'
       linux_env_vars: '{"SWIFT_DETERMINISTIC_HASHING": "1"}'
 
   benchmarks-macos:
